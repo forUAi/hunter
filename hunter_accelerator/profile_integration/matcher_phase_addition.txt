@@ -1,8 +1,19 @@
 ACCELERATOR PRE-PASS
 
-Run the snapshot-provided Hunter accelerator against the target repository.
-Temporary output under /tmp/hunter-accelerator is permitted; writing to the
-target repository remains prohibited.
+Identify the target repository explicitly by its absolute path, record the
+expected repository identity and expected commit, and run the snapshot-provided
+Hunter accelerator directly:
+
+python3 hunter_accelerator/devin_prepare.py \
+  --target-repo /absolute/path/to/target-repository \
+  --output-dir /tmp/hunter-accelerator
+
+Temporary output under /tmp/hunter-accelerator is permitted. Writing to the
+target repository remains prohibited. Before using any artifact, open
+manifest.json and verify that target_repository identifies the intended
+repository and commit_sha identifies the intended commit. If either value is
+missing, unresolved, or different from the expected target, treat that area as
+a coverage gap and use the manual fallback.
 
 When the accelerator reports COMPLETE:
 - Use its repository profile, carrier inventory, applicability evidence,
@@ -10,17 +21,28 @@ When the accelerator reports COMPLETE:
   as the deterministic baseline.
 - Merge its mandatory matchers with repository-specific matchers.
 - Do not remove any mandatory matcher.
+- Perform a focused architecture sanity review for security-relevant surfaces,
+  trust boundaries and carrier locations that deterministic preparation may not
+  model, even when the status is COMPLETE.
 - Manually inspect unsupported or novel repository-specific surfaces.
 - Do not repeat broad repository searches already covered by evidence-backed
   accelerator artifacts unless evidence is contradictory.
+- COMPLETE means deterministic preparation completed. It does not mean that
+  security analysis, investigation, triage, validation or reporting completed.
 
 When it reports PARTIAL:
 - Use completed evidence.
 - Perform the original Hunter All process for every listed unsupported
-  construct, unresolved category and coverage gap.
+  construct, unresolved category, skipped security-relevant file and coverage
+  gap. The remaining artifacts are still usable preparation evidence.
 
 When it reports FAILED:
 - Ignore its conclusions and execute the original Hunter All matcher process
   in full.
+
+For unsupported constructs, contradictory evidence, unresolved Git metadata,
+manifest mismatches or any coverage gap, use the original Hunter All manual
+matcher and investigation process for the affected scope. Never infer safety or
+N/A from missing accelerator coverage.
 
 The accelerator output is evidence support, not a final security decision.

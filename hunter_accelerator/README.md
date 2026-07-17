@@ -37,7 +37,7 @@ The output directory is required to be outside the target repository.
 - `manifest.json`: versions, repository state, file-manifest hash, artifact hashes, status, and counts.
 - `summary.json`: compact Devin-facing counts and capability summary.
 - `repository-profile.json`: languages, frameworks, build systems, technologies, repository types, and unsupported constructs.
-- `file-inventory.jsonl`: stable, hashed, classified file inventory from the single walk.
+- `file-inventory.jsonl`: stable, hashed, classified file inventory from the single walk, including generated and vendor-derived provenance tags.
 - `skipped-files.json`: every ignored or unread file/directory and the exact reason.
 - `carrier-inventory.json`: path/content/dependency carrier evidence with stable relative source locations.
 - `category-applicability.json`: all 85 classes with exactly one applicability state and its evidence.
@@ -52,7 +52,7 @@ The output directory is required to be outside the target repository.
 ## Status contract
 
 - `COMPLETE` means all supported deterministic Phase 1 preparation completed. It does **not** mean the repository is secure, investigated, or finding-free.
-- `PARTIAL` means Devin must perform the original Hunter All process for every unresolved category, skipped security-relevant file, unsupported construct, and coverage gap. Completed evidence may still be used.
+- `PARTIAL` means Devin must perform the original Hunter All process for every unresolved category, skipped security-relevant file, unsupported construct, unresolved Git metadata area, and coverage gap. Completed evidence may still be used.
 - `FAILED` means the output cannot be trusted and the unmodified Hunter All matcher process must run in full. `--strict` promotes a partial result to failed.
 
 The tool refuses invalid taxonomy data and never emits COMPLETE with applicable classes missing matcher/logic coverage, unresolved applicability, skipped relevant files, unsupported coverage, or invalid output.
@@ -66,6 +66,8 @@ The default cache is `/tmp/hunter-accelerator-cache/`, outside the target. Cache
 - The target is treated as untrusted data and is never imported, evaluated, executed, built, installed, or sent to a network/model.
 - Git inspection uses read-only commands with hooks, prompts, fsmonitor, and optional locks disabled.
 - Symlinks are never followed; escapes are recorded and make affected coverage partial.
+- `target`, `build`, `dist`, `.next`, and `vendor` are traversed. Relevant text, source, configuration, prompt, CI/CD, manifest, and infrastructure files are analyzed and tagged as generated or vendor-derived. Limits that prevent inspection produce security-relevant skips and PARTIAL coverage.
+- `.git`, `node_modules`, Python virtual environments and bytecode caches, `.gradle`, and coverage output remain excluded from the content walk. A `.git` gitfile is handled separately through constrained, read-only Git commands so worktrees and submodules retain commit and status metadata.
 - The output and cache directories must resolve outside the target repository.
 - Binary, size, encoding, generated/test, configuration, prompt, CI/CD, container/IaC, mobile, and dependency status is audited.
 - Tests and fixtures are not automatically suppressed.

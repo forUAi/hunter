@@ -18,7 +18,9 @@ Coverage-gap detection
 Hunter All Devin matcher and investigation phases
 ```
 
-The direct script establishes a `RepositoryWorkspace` that resolves the target and rejects output/cache paths inside it. The workspace reads Git metadata with non-mutating commands only. `FileInventoryBuilder` performs one `os.walk`, rejects symlinks, hashes each read file, records skips, and passes the in-memory text to the composed per-file analyzer before discarding it.
+The direct script establishes a `RepositoryWorkspace` that resolves the target and rejects output/cache paths inside it. The workspace reads Git metadata with non-mutating commands only, including regular `.git` gitfiles used by worktrees and submodules. It refuses parent discovery, validates the resolved work-tree root, and records unresolved metadata as a Class 24 coverage gap. `FileInventoryBuilder` performs one `os.walk`, rejects symlinks, hashes each read file, records skips, and passes the in-memory text to the composed per-file analyzer before discarding it.
+
+Generated output and vendored directories are not pruning boundaries. The inventory traverses `target`, `build`, `dist`, `.next`, and `vendor`, tags their records with provenance, analyzes security-relevant text carriers, and fails closed to PARTIAL when configured limits prevent inspection. Git metadata, installed dependencies, virtual environments, bytecode/build caches, and coverage output remain excluded from the content walk.
 
 The per-file analyzer applies path, content, dependency, carrier, negative-evidence, logic-target, and unsupported-construct detectors during that one read. It stores only bounded evidence metadata—not complete source contents—and can reuse content-addressed results for unchanged files. The aggregate layer then builds the capability profile and carrier inventory.
 

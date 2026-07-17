@@ -26,6 +26,7 @@ def decide_applicability(
     unsupported: list[UnsupportedConstruct],
     negative_matches: dict[int, list[dict[str, Any]]],
     has_git_history: bool,
+    git_metadata_status: str,
 ) -> list[dict[str, Any]]:
     evidence_by_class: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for evidence in carriers:
@@ -99,6 +100,9 @@ def decide_applicability(
         elif number == 58:
             status = "APPLICABLE"
             reason = "Hunter All requires Class 58 to be handled in downstream aggregation; Phase 1 emits a handoff only."
+        elif number == 24 and git_metadata_status == "unresolved":
+            status = "UNRESOLVED"
+            reason = "Git metadata exists but could not be safely resolved; Class 24 cannot be marked N/A."
         elif positives:
             status = "APPLICABLE"
             reason = "At least one configured carrier or class-specific signal exists."
@@ -134,6 +138,7 @@ def decide_applicability(
                 "skipped_files_affecting_confidence": relevant_skips,
                 "unsupported_constructs": unresolved_constructs,
                 "downstream_handoff": number == 58,
+                "git_metadata_status": git_metadata_status if number == 24 else None,
             }
         )
     return decisions

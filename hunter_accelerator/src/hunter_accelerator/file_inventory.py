@@ -26,6 +26,50 @@ DEPENDENCY_NAMES = frozenset(
     }
 )
 BINARY_EXTENSIONS = frozenset({".apk", ".ipa", ".aab", ".jar", ".war", ".dll", ".exe", ".so", ".dylib", ".class"})
+GENERATED_DIRECTORY_NAMES = frozenset({"generated", "gen", "dist", "target", "build", ".next"})
+VENDOR_DIRECTORY_NAMES = frozenset({"vendor"})
+CONSERVATIVE_DIRECTORY_CARRIER_HINTS = tuple(
+    sorted(
+        {
+            "CI/CD",
+            "GraphQL",
+            "HTTP/API route",
+            "Helm",
+            "Hydra buildpack",
+            "Kubernetes",
+            "LLM SDK",
+            "MCP",
+            "Terraform/IaC",
+            "WebSocket",
+            "agent memory",
+            "agent tool",
+            "authentication",
+            "authorization",
+            "binary mobile",
+            "certificate or key material",
+            "cloud SDK",
+            "cloud configuration",
+            "configuration",
+            "container",
+            "container CI/CD",
+            "cryptography",
+            "database/data-access",
+            "dependency manifest",
+            "deserialization",
+            "file/archive",
+            "license",
+            "logging",
+            "mobile",
+            "outbound HTTP",
+            "prompt or instruction",
+            "secret-bearing configuration",
+            "session/JWT/OAuth",
+            "source code",
+            "template",
+            "vector database",
+        }
+    )
+)
 
 
 def _path_flags(relative_path: str) -> dict[str, bool]:
@@ -71,7 +115,8 @@ def _path_flags(relative_path: str) -> dict[str, bool]:
     configuration = extension in CONFIG_EXTENSIONS or lower_name in {".env", "procfile", "manifest.yml", ".gitlab-ci.yml"}
     source_code = extension in SOURCE_EXTENSIONS
     test = bool(parts & {"test", "tests", "spec", "specs", "fixture", "fixtures", "__tests__"}) or lower_name.startswith("test_")
-    generated = bool(parts & {"generated", "gen", "dist", "target", "coverage"}) or ".min." in lower_name
+    generated = bool(parts & GENERATED_DIRECTORY_NAMES) or ".min." in lower_name
+    vendor_derived = bool(parts & VENDOR_DIRECTORY_NAMES)
     security_relevant = any((configuration, source_code, prompt, ci_cd, container_iac, mobile, dependency)) or extension in SECRET_MATERIAL_EXTENSIONS
     return {
         "configuration": configuration,
@@ -83,6 +128,7 @@ def _path_flags(relative_path: str) -> dict[str, bool]:
         "dependency_manifest": dependency,
         "test": test,
         "generated": generated,
+        "vendor_derived": vendor_derived,
         "security_relevant": security_relevant,
     }
 
@@ -131,6 +177,27 @@ class FileInventoryBuilder:
         self.bytes_scanned = 0
         self.walk_count = 0
 
+    @staticmethod
+    def _skipped_entry(
+        relative: str,
+        entry_type: str,
+        reason: str,
+        security_relevant: bool,
+        size: int | None = None,
+        carrier_hints: tuple[str, ...] | None = None,
+    ) -> SkippedEntry:
+        flags = _path_flags(relative)
+        return SkippedEntry(
+            relative_path=relative,
+            entry_type=entry_type,
+            reason=reason,
+            security_relevant=security_relevant,
+            size=size,
+            carrier_hints=_carrier_hints(flags, relative) if carrier_hints is None else carrier_hints,
+            generated=flags["generated"],
+            vendor_derived=flags["vendor_derived"],
+        )
+
     def _record_directory_skip(
         self,
         path: Path,
@@ -140,15 +207,12 @@ class FileInventoryBuilder:
     ) -> None:
         flags = _path_flags(relative)
         security_relevant = flags["security_relevant"] if security_relevant_override is None else security_relevant_override
-        self.skipped.append(
-            SkippedEntry(
-                relative,
-                "directory",
-                reason,
-                security_relevant,
-                carrier_hints=() if security_relevant_override else _carrier_hints(flags, relative),
-            )
+        carrier_hints = (
+            CONSERVATIVE_DIRECTORY_CARRIER_HINTS
+            if security_relevant_override
+            else _carrier_hints(flags, relative)
         )
+        self.skipped.append(self._skipped_entry(relative, "directory", reason, security_relevant, carrier_hints=carrier_hints))
 
     def scan(self, processor: Callable[[FileRecord, str | None], None]) -> tuple[list[FileRecord], list[SkippedEntry]]:
         if self.walk_count:
@@ -162,7 +226,13 @@ class FileInventoryBuilder:
             except ValueError:
                 relative = "<outside-target>"
             self.skipped.append(
-                SkippedEntry(relative, "directory", "directory traversal failed", True, carrier_hints=())
+                self._skipped_entry(
+                    relative,
+                    "directory",
+                    "directory traversal failed",
+                    True,
+                    carrier_hints=CONSERVATIVE_DIRECTORY_CARRIER_HINTS,
+                )
             )
 
         for current, directory_names, file_names in os.walk(
@@ -194,18 +264,15 @@ class FileInventoryBuilder:
             for file_name in sorted(file_names):
                 path = current_path / file_name
                 relative = path.relative_to(root).as_posix()
+                if relative == ".git":
+                    # Git metadata is handled exclusively by the constrained read-only Git wrapper.
+                    continue
                 flags = _path_flags(relative)
                 try:
                     stat = path.lstat()
                 except OSError:
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            "metadata read failed",
-                            flags["security_relevant"],
-                            carrier_hints=_carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", "metadata read failed", flags["security_relevant"])
                     )
                     continue
                 if path.is_symlink():
@@ -216,50 +283,22 @@ class FileInventoryBuilder:
                         escaped = True
                     reason = "symlink file escapes target repository" if escaped else "symlink file not followed"
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            reason,
-                            flags["security_relevant"],
-                            stat.st_size,
-                            _carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", reason, flags["security_relevant"], stat.st_size)
                     )
                     continue
                 if not path.is_file():
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            "not a regular file",
-                            flags["security_relevant"],
-                            stat.st_size,
-                            _carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", "not a regular file", flags["security_relevant"], stat.st_size)
                     )
                     continue
                 if stat.st_size > self.max_file_size:
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            "file exceeds max-file-size",
-                            flags["security_relevant"],
-                            stat.st_size,
-                            _carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", "file exceeds max-file-size", flags["security_relevant"], stat.st_size)
                     )
                     continue
                 if self.bytes_scanned + stat.st_size > self.max_total_bytes:
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            "scan exceeds max-total-bytes",
-                            flags["security_relevant"],
-                            stat.st_size,
-                            _carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", "scan exceeds max-total-bytes", flags["security_relevant"], stat.st_size)
                     )
                     continue
                 descriptor: int | None = None
@@ -289,14 +328,7 @@ class FileInventoryBuilder:
                         else "content read failed or path changed during read"
                     )
                     self.skipped.append(
-                        SkippedEntry(
-                            relative,
-                            "file",
-                            reason,
-                            flags["security_relevant"],
-                            stat.st_size,
-                            _carrier_hints(flags, relative),
-                        )
+                        self._skipped_entry(relative, "file", reason, flags["security_relevant"], stat.st_size)
                     )
                     continue
                 self.bytes_scanned += len(data)
@@ -318,6 +350,7 @@ class FileInventoryBuilder:
                     content_hash=sha256_bytes(data),
                     binary=binary,
                     generated=flags["generated"],
+                    vendor_derived=flags["vendor_derived"],
                     test=flags["test"],
                     configuration=flags["configuration"],
                     source_code=flags["source_code"],

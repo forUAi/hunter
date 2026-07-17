@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import __version__
 
-CONFIGURATION_VERSION = "phase1-config-1"
+CONFIGURATION_VERSION = "phase1-config-2"
 DEFAULT_MAX_FILE_SIZE = 2 * 1024 * 1024
 DEFAULT_MAX_TOTAL_BYTES = 128 * 1024 * 1024
 DEFAULT_OUTPUT_DIR = Path("/tmp/hunter-accelerator")

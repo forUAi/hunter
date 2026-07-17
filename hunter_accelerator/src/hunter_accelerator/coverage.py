@@ -17,6 +17,8 @@ def evaluate_coverage(
     carriers: list[CarrierEvidence],
     skipped: list[SkippedEntry],
     unsupported: list[UnsupportedConstruct],
+    git_metadata_status: str,
+    git_metadata_reason: str | None,
 ) -> list[dict[str, Any]]:
     matcher_counts = Counter(int(item["class_number"]) for item in matchers)
     absence_matcher_counts = Counter(
@@ -56,6 +58,15 @@ def evaluate_coverage(
                 [number],
                 decision["skipped_files_affecting_confidence"] + decision["unsupported_constructs"],
             )
+
+    if git_metadata_status == "unresolved":
+        reason = git_metadata_reason or "Git metadata could not be safely resolved"
+        add(
+            "git_metadata_unresolved",
+            f"Class 24 Git metadata is unresolved: {reason}.",
+            [24],
+            [{"path": ".git", "git_metadata_status": git_metadata_status, "reason": reason}],
+        )
 
     for entry in skipped:
         if entry.security_relevant:
