@@ -18,7 +18,15 @@ TAXONOMY = ROOT / "taxonomy" / "hunter_all_85.json"
 FIXTURES = ROOT / "fixtures"
 
 
-def run_repository(target: Path, *, use_cache: bool = False, max_file_size: int = 2 * 1024 * 1024, max_total_bytes: int = 128 * 1024 * 1024, cache_dir: Path | None = None) -> tuple[str, dict[str, Any]]:
+def run_repository(
+    target: Path,
+    *,
+    use_cache: bool = False,
+    max_file_size: int = 2 * 1024 * 1024,
+    max_total_bytes: int = 128 * 1024 * 1024,
+    cache_dir: Path | None = None,
+    strict: bool = False,
+) -> tuple[str, dict[str, Any]]:
     with tempfile.TemporaryDirectory(prefix="hunter-output-") as output_name:
         cache_context = tempfile.TemporaryDirectory(prefix="hunter-cache-") if cache_dir is None else None
         selected_cache = cache_dir or Path(cache_context.name)
@@ -31,6 +39,7 @@ def run_repository(target: Path, *, use_cache: bool = False, max_file_size: int 
                 max_total_bytes=max_total_bytes,
                 cache_dir=selected_cache,
                 use_cache=use_cache,
+                strict=strict,
             )
             status, result = run_pipeline(configuration)
             artifacts: dict[str, Any] = {}

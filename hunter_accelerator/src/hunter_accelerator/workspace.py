@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat as stat_module
 import subprocess
 from pathlib import Path
 
@@ -69,14 +70,9 @@ class RepositoryWorkspace:
 
     def repository_info(self) -> RepositoryInfo:
         git_entry = self.root / ".git"
-        # Never discover or read a parent repository. Worktree gitfiles and symlinked
-        # Git metadata may point outside the target boundary, so they are not followed.
         try:
-            if not git_entry.exists() or git_entry.is_symlink() or not git_entry.is_dir():
-                raise OSError
-            if not _is_within(git_entry.resolve(strict=True), self.root):
-                raise OSError
-        except OSError:
+            git_stat = git_entry.lstat()
+        except FileNotFoundError:
             return RepositoryInfo(
                 repository_id=stable_id("repo", str(self.root), length=24),
                 name=self.root.name,
@@ -84,22 +80,64 @@ class RepositoryWorkspace:
                 commit_sha=None,
                 working_tree_state="not_git",
                 has_git_history=False,
+                git_metadata_status="not_git",
             )
+        except OSError:
+            return self._unresolved_repository_info("unable to inspect the .git metadata entry")
+
+        # A regular .git file is the standard representation for worktrees and
+        # submodules. Let the constrained Git wrapper resolve it; never parse or
+        # follow its path directly. Symlinks and special files remain unresolved.
+        if stat_module.S_ISLNK(git_stat.st_mode):
+            return self._unresolved_repository_info("the .git metadata entry is a symlink")
+        if not (stat_module.S_ISDIR(git_stat.st_mode) or stat_module.S_ISREG(git_stat.st_mode)):
+            return self._unresolved_repository_info("the .git metadata entry is not a directory or gitfile")
+        if stat_module.S_ISDIR(git_stat.st_mode):
+            try:
+                if not _is_within(git_entry.resolve(strict=True), self.root):
+                    return self._unresolved_repository_info("the .git directory resolves outside the target repository")
+            except OSError:
+                return self._unresolved_repository_info("the .git directory cannot be safely resolved")
+
         inside_code, inside = self._git("rev-parse", "--is-inside-work-tree")
         is_git = inside_code == 0 and inside == "true"
-        commit: str | None = None
-        state = "not_git"
-        if is_git:
-            commit_code, commit_value = self._git("rev-parse", "HEAD")
-            if commit_code == 0 and commit_value:
-                commit = commit_value.splitlines()[0]
-            status_code, status_value = self._git("status", "--porcelain=v1", "--untracked-files=all")
-            state = "dirty" if status_code == 0 and status_value else "clean" if status_code == 0 else "unknown"
+        if not is_git:
+            return self._unresolved_repository_info("Git could not resolve the repository metadata")
+
+        top_level_code, top_level_value = self._git("rev-parse", "--show-toplevel")
+        try:
+            top_level = Path(top_level_value).resolve(strict=True) if top_level_code == 0 and top_level_value else None
+        except OSError:
+            top_level = None
+        if top_level != self.root:
+            return self._unresolved_repository_info("Git resolved a work tree other than the target repository")
+
+        commit_code, commit_value = self._git("rev-parse", "--verify", "HEAD^{commit}")
+        if commit_code != 0 or not commit_value:
+            return self._unresolved_repository_info("Git history is present but the current commit cannot be resolved")
+        commit = commit_value.splitlines()[0]
+        status_code, status_value = self._git("status", "--porcelain=v1", "--untracked-files=all")
+        if status_code != 0:
+            return self._unresolved_repository_info("Git working-tree status cannot be resolved")
+        state = "dirty" if status_value else "clean"
         return RepositoryInfo(
             repository_id=stable_id("repo", str(self.root), length=24),
             name=self.root.name,
             absolute_path=str(self.root),
             commit_sha=commit,
             working_tree_state=state,
-            has_git_history=bool(commit),
+            has_git_history=True,
+            git_metadata_status="resolved",
+        )
+
+    def _unresolved_repository_info(self, reason: str) -> RepositoryInfo:
+        return RepositoryInfo(
+            repository_id=stable_id("repo", str(self.root), length=24),
+            name=self.root.name,
+            absolute_path=str(self.root),
+            commit_sha=None,
+            working_tree_state="unknown",
+            has_git_history=False,
+            git_metadata_status="unresolved",
+            git_metadata_reason=reason,
         )

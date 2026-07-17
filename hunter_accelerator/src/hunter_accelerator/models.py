@@ -15,6 +15,8 @@ class RepositoryInfo:
     commit_sha: str | None
     working_tree_state: str
     has_git_history: bool
+    git_metadata_status: str = "not_git"
+    git_metadata_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class FileRecord:
     mobile: bool
     dependency_manifest: bool
     security_relevant: bool
+    vendor_derived: bool = False
     language_hints: tuple[str, ...] = ()
     framework_hints: tuple[str, ...] = ()
     line_count: int = 0
@@ -55,6 +58,8 @@ class SkippedEntry:
     security_relevant: bool
     size: int | None = None
     carrier_hints: tuple[str, ...] = ()
+    generated: bool = False
+    vendor_derived: bool = False
 
     def as_json(self) -> dict[str, Any]:
         result = asdict(self)

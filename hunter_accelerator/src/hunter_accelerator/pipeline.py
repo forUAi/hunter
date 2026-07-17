@@ -71,6 +71,8 @@ def _repository_profile(
         "commit_sha": repository.commit_sha,
         "working_tree_status": repository.working_tree_state,
         "has_git_history": repository.has_git_history,
+        "git_metadata_status": repository.git_metadata_status,
+        "git_metadata_reason": repository.git_metadata_reason,
         "file_count": len(records),
         "text_file_count": sum(not record.binary for record in records),
         "binary_file_count": sum(record.binary for record in records),
@@ -173,6 +175,7 @@ def run_pipeline(configuration: AcceleratorConfiguration) -> tuple[str, dict[str
             accumulator.unsupported,
             accumulator.negative_matches,
             repository.has_git_history,
+            repository.git_metadata_status,
         )
         negative_evidence = build_negative_evidence(taxonomy, decisions, skipped)
     with telemetry.phase("matcher_generation"):
@@ -186,6 +189,8 @@ def run_pipeline(configuration: AcceleratorConfiguration) -> tuple[str, dict[str
             accumulator.carriers,
             skipped,
             accumulator.unsupported,
+            repository.git_metadata_status,
+            repository.git_metadata_reason,
         )
     telemetry.metrics.coverage_gaps = len(gaps)
     status = "COMPLETE" if not gaps and not accumulator.unsupported else "PARTIAL"
@@ -246,6 +251,8 @@ def run_pipeline(configuration: AcceleratorConfiguration) -> tuple[str, dict[str
         "target_repository": repository.absolute_path,
         "commit_sha": repository.commit_sha,
         "working_tree_state": repository.working_tree_state,
+        "git_metadata_status": repository.git_metadata_status,
+        "git_metadata_reason": repository.git_metadata_reason,
         "file_manifest_hash": inventory.manifest_hash,
         "cache_key_inputs_hash": stable_json_hash(
             {
