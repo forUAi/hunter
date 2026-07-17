@@ -1,0 +1,5 @@
+PHASE 1 ACCELERATOR ORIENTATION
+
+Investigation workers may use the accelerator's carrier evidence, matcher specifications and logic-target list to locate the areas that require review. These artifacts are preparation leads, not findings or proof of safety.
+
+Apply the original Hunter All investigation guidance without modification. In particular, the abstain rule, cited source-sink-path proof, mitigation checks, reachability checks, verbatim excerpts, absence protocol, mandatory per-target business-logic pass, confidence gate and per-class accounting remain required. Re-read the target source; do not treat accelerator evidence text as a substitute for repository evidence.

@@ -1,0 +1,26 @@
+ACCELERATOR PRE-PASS
+
+Run the snapshot-provided Hunter accelerator against the target repository.
+Temporary output under /tmp/hunter-accelerator is permitted; writing to the
+target repository remains prohibited.
+
+When the accelerator reports COMPLETE:
+- Use its repository profile, carrier inventory, applicability evidence,
+  negative evidence, mandatory matcher specifications and logic-target list
+  as the deterministic baseline.
+- Merge its mandatory matchers with repository-specific matchers.
+- Do not remove any mandatory matcher.
+- Manually inspect unsupported or novel repository-specific surfaces.
+- Do not repeat broad repository searches already covered by evidence-backed
+  accelerator artifacts unless evidence is contradictory.
+
+When it reports PARTIAL:
+- Use completed evidence.
+- Perform the original Hunter All process for every listed unsupported
+  construct, unresolved category and coverage gap.
+
+When it reports FAILED:
+- Ignore its conclusions and execute the original Hunter All matcher process
+  in full.
+
+The accelerator output is evidence support, not a final security decision.

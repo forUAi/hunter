@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "local-tools": {
+      "command": "python3",
+      "args": ["server.py"]
+    }
+  },
+  "tools": [
+    {"name": "read_record", "requires_approval": true}
+  ]
+}

@@ -1,0 +1,5 @@
+image:
+  repository: artifactory.example.invalid/dashboard-service
+  tag: "1.0.0"
+securityContext:
+  runAsNonRoot: true

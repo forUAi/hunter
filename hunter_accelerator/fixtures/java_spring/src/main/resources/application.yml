@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: authentication
+logging:
+  level:
+    root: INFO
+security:
+  oauth2:
+    enabled: true
