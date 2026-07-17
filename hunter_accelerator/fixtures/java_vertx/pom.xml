@@ -1,0 +1,6 @@
+<project>
+  <dependencies>
+    <dependency><groupId>io.vertx</groupId><artifactId>vertx-web</artifactId><version>4.5.8</version></dependency>
+    <dependency><groupId>io.vertx</groupId><artifactId>vertx-auth-jwt</artifactId><version>4.5.8</version></dependency>
+  </dependencies>
+</project>

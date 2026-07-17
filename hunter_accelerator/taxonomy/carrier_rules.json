@@ -1,0 +1,135 @@
+{
+  "version": "hunter-all-phase1-1",
+  "non_source_globs": [
+    "**/*.properties", "**/*.yml", "**/*.yaml", "**/*.env", "**/*.ini", "**/*.toml", "**/*.json", "**/*.conf",
+    "**/Dockerfile*", "**/Containerfile*", "**/*.tf", "**/k8s/**/*.yaml", "**/helm/**/*.yaml", "**/docker-compose*",
+    "**/Jenkinsfile*", "**/.github/workflows/*", "**/.gitlab-ci.yml", "**/manifest.yml", "**/Procfile", "**/pom.xml",
+    "**/build.gradle*", "**/package-lock.json", "**/go.mod", "**/go.sum", "**/requirements.txt", "**/*.csproj",
+    "**/Gemfile.lock", "**/SKILL.md", "**/*.prompt", "**/.cursorrules", "**/*tool*.json", "**/*function*.json", "**/*mcp*.json"
+  ],
+  "llm_agentic": {
+    "classes": [66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
+    "llm_classes": [66, 67, 68, 69, 70, 71, 72, 73, 74, 75],
+    "agentic_classes": [76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
+    "carrier_types": ["LLM SDK", "prompt or instruction", "agent tool", "MCP", "agent memory", "vector database"],
+    "content_activates_classes": [66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85],
+    "content_globs": [
+      "**/SKILL.md", "**/*.prompt", "**/*prompt*.txt", "**/*prompt*.md", "**/*prompt*.yaml", "**/*prompt*.yml",
+      "**/*prompt*.json", "**/.cursorrules", "**/*tool*.json", "**/*function*.json", "**/*mcp*.json", "**/*memory*.json"
+    ],
+    "sdk_patterns": [
+      "openai", "anthropic", "bedrock", "vertexai", "azure-openai", "langchain", "langgraph", "llamaindex",
+      "semantic-kernel", "autogen", "crewai", "dspy"
+    ],
+    "vector_patterns": ["pinecone", "weaviate", "chroma", "pgvector", "faiss", "milvus", "qdrant"],
+    "runtime_only_static_surface_classes": [74, 83, 85],
+    "phase_1_rule": "Generate static surface matcher specifications only; never claim runtime exploitation or make investigation decisions."
+  },
+  "container": {
+    "class_number": 59,
+    "carriers": [
+      {"id": "a", "name": "container build", "patterns": ["Dockerfile*", "Containerfile*", "FROM", "RUN", "COPY", "ADD", "USER", "EXPOSE", "HEALTHCHECK"]},
+      {"id": "b", "name": "Kubernetes workload", "patterns": ["Deployment", "Pod", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicaSet"]},
+      {"id": "c", "name": "Helm or Kustomize", "patterns": ["Chart.yaml", "values*.yaml", "templates/*.yaml", "kustomization.yaml"]},
+      {"id": "d", "name": "runtime, compose or registry", "patterns": ["docker-compose*", "compose.yaml", "image:", "privileged:", "hostPath"]},
+      {"id": "e", "name": "container CI/CD", "patterns": [".github/workflows/*", ".gitlab-ci.yml", "Jenkinsfile", ".circleci/config.yml", "azure-pipelines.yml", "docker build", "docker push", "kaniko", "buildah", "trivy", "grype", "cosign", "--sbom"]},
+      {"id": "f", "name": "Kubernetes RBAC, network or admission", "patterns": ["Role", "ClusterRole", "RoleBinding", "ServiceAccount", "NetworkPolicy", "PodSecurityPolicy", "ValidatingWebhookConfiguration", "MutatingWebhookConfiguration", "pod-security.kubernetes.io"]},
+      {"id": "g", "name": "service mesh or mTLS", "patterns": ["PeerAuthentication", "DestinationRule", "AuthorizationPolicy", "VirtualService", "Gateway", "ServerPolicy", "STRICT", "PERMISSIVE", "DISABLE"]},
+      {"id": "h", "name": "Hydra buildpack config", "patterns": ["Jenkinsfile*", ".github/workflows/*", "builder_image", "paas-registry/buildpacks/"]},
+      {"id": "i", "name": "Hydra buildpack source", "patterns": ["amex-eng/buildpacks-stacks", "amex-eng/buildpacks-builders", "amex-eng/shell-pack"]}
+    ],
+    "checks": [
+      {"id": 1, "name": "insecure or EOL base image", "cwe": 829},
+      {"id": 2, "name": "unpinned or vulnerable OS and application packages", "cwe": 1104},
+      {"id": 3, "name": "root execution or missing non-root control", "cwe": 250},
+      {"id": 4, "name": "privileged execution, dangerous capabilities or privilege escalation", "cwe": 250},
+      {"id": 5, "name": "host namespace sharing", "cwe": 668},
+      {"id": 6, "name": "dangerous hostPath mount", "cwe": 668},
+      {"id": 7, "name": "missing or weak seccomp, AppArmor or SELinux", "cwe": 693},
+      {"id": 8, "name": "insecure securityContext", "cwe": 250},
+      {"id": 9, "name": "missing CPU or memory limits and requests", "cwe": 770},
+      {"id": 10, "name": "exposed admin or debug port", "cwe": 200},
+      {"id": 11, "name": "secret in image environment, argument, copy or ConfigMap", "cwe": 798},
+      {"id": 12, "name": "mutable image, pull policy or untrusted registry", "cwe": 829},
+      {"id": 13, "name": "overly permissive RBAC", "cwe": 269},
+      {"id": 14, "name": "missing or allow-all NetworkPolicy", "cwe": 668},
+      {"id": 15, "name": "missing or misconfigured Pod Security admission or deprecated PSP", "cwe": 693},
+      {"id": 16, "name": "multi-stage build secret leak", "cwe": 200},
+      {"id": 17, "name": "init or ephemeral container security", "cwe": 250},
+      {"id": 18, "name": "service-mesh mTLS gap", "cwe": 319},
+      {"id": 19, "name": "image-signing gap", "cwe": 345},
+      {"id": 20, "name": "provenance or SBOM absence in CI", "cwe": 1104},
+      {"id": 21, "name": "mutable tag without digest", "cwe": 829}
+    ]
+  },
+  "hydra": {
+    "class_number": 63,
+    "ground_truth": "github.aexp.com Hydra Buildpacks (Shellpack) paved-road page; cite a repository copy when present, otherwise lower confidence and flag rather than guess.",
+    "workflow_presence_is_carrier": true,
+    "carrier_globs": ["**/Jenkinsfile*", "**/.github/workflows/*.yml", "**/.github/workflows/*.yaml", "**/.gitlab-ci.yml", "**/*buildpack*"],
+    "carrier_patterns": [
+      "builder_image", "paas-registry/buildpacks/", "amex-eng/buildpacks-stacks", "amex-eng/buildpacks-builders",
+      "amex-eng/shell-pack", "DEBUG_FLAG", "shell-pack", "rhel-tomcat", "rhel-nginx", "rhel-python", "rhel-nodejs",
+      "rhel-jdk", "rhel-jboss", "rhel-go", "rhel-dotnet", "rhel-ruby", "rhel-process-server", "alpine-jdk",
+      "alpine-nodejs", "alpine-python", "alpine-dotnet", "alpine-r42", "alpine-lite", "alpine-builder", "ace-python",
+      "ace-rpa", "ace-jdk", "ibm-business-automation", "ubi8-builder", "ubi9-builder", "ubi10-builder", "ubuntu-builder",
+      "debian-builder", "fedora-builder"
+    ],
+    "approved_registry": "artifactory.aexp.com/paas-registry/buildpacks/",
+    "approved_builders": [
+      "rhel-tomcat", "rhel-nginx", "rhel-python", "rhel-nodejs", "rhel-jdk", "rhel-jboss", "rhel-go", "rhel-dotnet",
+      "rhel-ruby", "alpine-jdk", "alpine-nodejs", "alpine-python", "alpine-dotnet", "alpine-builder", "ubi8-builder", "ubi9-builder"
+    ],
+    "deprecated_or_unapproved": [
+      "rhel-process-server", "alpine-r42", "alpine-lite", "ace-python", "ace-rpa", "ace-jdk", "ibm-business-automation",
+      "ubi10-builder", "ubuntu-builder", "debian-builder", "fedora-builder"
+    ],
+    "checks": [
+      {"id": 22, "name": "deprecated or unapproved builder", "cwe": 1104},
+      {"id": 23, "name": "90-day redeployment", "cwe": 693, "effective_date": "2025-01-31"},
+      {"id": 24, "name": "non-approved registry", "cwe": 829},
+      {"id": 25, "name": "DEBUG_FLAG exposure", "cwe": 200},
+      {"id": 26, "name": "Shell-Pack certificate compliance", "cwe": 295},
+      {"id": 27, "name": "BYOI compliance", "cwe": 693}
+    ],
+    "eol": {
+      "java": {"flag": ["8", "11"], "supported": ["17", "21"]},
+      "node": {"flag": ["16", "18"], "supported": ["20", "22"]},
+      "python": {"flag_rule": "<=3.8", "supported_rule": ">=3.9", "preferred_rule": ">=3.11"},
+      "go": {"flag_rule": "more than two minor releases behind current stable"},
+      "backstop": "Flag for human review whenever vendor currency cannot be established; approval alone never proves currency."
+    },
+    "acceptance_rule": "A builder is acceptable only when it is approved and non-EOL; Phase 1 emits evidence and matchers, not a finding decision."
+  },
+  "mobile": {
+    "classes": [64, 65],
+    "carrier_globs": [
+      "**/AndroidManifest.xml", "**/*.plist", "**/*.entitlements", "**/Podfile", "**/build.gradle*", "**/*.java",
+      "**/*.kt", "**/*.swift", "**/*.m", "**/*.mm", "**/pubspec.yaml", "**/package.json", "**/*.apk", "**/*.ipa", "**/*.aab"
+    ],
+    "binary_rule": "Class 65 is applicable only when APK, IPA or AAB binaries are in scope; otherwise require negative evidence.",
+    "mast": [
+      {"id": "M1", "name": "Improper Credential Usage", "signals": ["hardcoded credentials", "unencrypted SharedPreferences or Keychain credentials", "OAuth or token refresh"]},
+      {"id": "M2", "name": "Inadequate Supply Chain", "signals": ["outdated dependencies", "unverified SDK", "missing integrity check"]},
+      {"id": "M3", "name": "Insecure Authentication/Authorization", "signals": ["weak biometrics", "missing server-side validation", "session or authorization bypass"]},
+      {"id": "M4", "name": "Insufficient Input/Output Validation", "signals": ["deep link or intent", "local database query", "WebView output"]},
+      {"id": "M5", "name": "Insecure Communication", "signals": ["missing pinning", "cleartext traffic", "bad TLS", "accept-all TrustManager"]},
+      {"id": "M6", "name": "Inadequate Privacy", "signals": ["excessive permissions", "missing privacy policy", "tracking without consent"]},
+      {"id": "M7", "name": "Insufficient Binary Protections", "signals": ["missing obfuscation", "debug symbols", "missing root or jailbreak detection"]},
+      {"id": "M8", "name": "Security Misconfiguration", "signals": ["debuggable", "exported component", "backup enabled", "low minimum SDK"]},
+      {"id": "M9", "name": "Insecure Data Storage", "signals": ["sensitive logs", "unencrypted local or external storage", "clipboard exposure"]},
+      {"id": "M10", "name": "Insufficient Cryptography", "signals": ["MD5 or SHA1", "hardcoded key or IV", "ECB", "insufficient key length"]}
+    ]
+  },
+  "pqc": {
+    "class_number": 25,
+    "tags": {
+      "pqc_vulnerable": ["RSA", "DSA", "ECDSA", "ECDH", "DH"],
+      "pqc_weakened": ["AES-128", "SHA-1", "sub-256-bit hash"],
+      "pqc_safe": ["AES-256", "SHA-384", "SHA-512", "ML-KEM", "ML-DSA", "SLH-DSA"],
+      "pqc_hybrid": ["classical plus PQC hybrid"]
+    },
+    "replacement": {"key_exchange": "ML-KEM", "signature": ["ML-DSA", "SLH-DSA"]},
+    "phase_1_rule": "Inventory crypto carriers and emit matcher specifications only; the Hunter All investigation performs asset tagging and findings."
+  }
+}

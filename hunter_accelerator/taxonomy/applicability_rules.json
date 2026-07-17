@@ -1,0 +1,12 @@
+{
+  "version":"hunter-all-phase1-1",
+  "statuses":["ALWAYS_APPLICABLE","APPLICABLE","NOT_APPLICABLE_WITH_NEGATIVE_EVIDENCE","UNRESOLVED"],
+  "default":"APPLICABLE_WHEN_UNCERTAIN",
+  "rules":{
+    "always_applicable":"Never N/A; create matchers and enumerate standing logic targets for logic classes.",
+    "carrier_bound":"N/A only after every configured carrier search executes with zero relevant carriers.",
+    "negative_evidence":"Every N/A names searched carrier types, patterns, files considered, and empty results.",
+    "uncertainty":"Skipped security-relevant files, unsupported parsing, or unresolved custom frameworks force UNRESOLVED.",
+    "downstream_reaudit":"Hunter All triage independently re-audits every N/A; Phase 1 does not perform that re-audit."
+  }
+}

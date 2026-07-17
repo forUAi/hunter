@@ -1,0 +1,12 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      release_name:
+        required: true
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./release.sh "${{ inputs.release_name }}"

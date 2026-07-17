@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infrastructure-service
+spec:
+  template:
+    spec:
+      containers:
+        - name: service
+          image: artifactory.aexp.com/paas-registry/buildpacks/rhel-jdk:17
+          securityContext:
+            runAsNonRoot: true
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: service-policy
+spec: {}

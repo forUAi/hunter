@@ -1,0 +1,16 @@
+name: build
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        env:
+          builder_image: artifactory.aexp.com/paas-registry/buildpacks/rhel-jdk:17
+          SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
+        run: docker build --build-arg IMAGE_TAG="${{ inputs.image_tag }}" .
