@@ -1,0 +1,12 @@
+{
+  "acu_usage": {"child_acu_by_session": {}, "child_acu_total": 0.0, "parent_acu": 0.0, "total_acu": 0.0, "usage_records": 0},
+  "coverage_summary": {"class_count": 85, "complete": true, "coverage_gap_count": 0},
+  "critic_summary": {"decision_count": 0, "verdict_counts": {"CONFIRMED": 0, "DOWNGRADED": 0, "REJECTED": 0}},
+  "findings": [],
+  "run_id": "hunter-example",
+  "schema_version": 1,
+  "status": "COMPLETE",
+  "target_commit": "0123456789abcdef0123456789abcdef01234567",
+  "target_repository": "example/target",
+  "validation_summary": {"finding_count": 0, "status_counts": {"CONFIRMED": 0, "FALSE_POSITIVE": 0, "INCONCLUSIVE": 0}}
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter managed coverage plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "target_repository", "target_commit", "taxonomy_version", "entries"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "taxonomy_version": {"type": "string", "minLength": 1},
+    "entries": {"type": "array", "minItems": 85, "maxItems": 85, "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class_number", "class_name", "preliminary_state", "task_ids", "candidate_files", "carrier_evidence", "negative_evidence", "logic_targets", "requires_manual_review"],
+      "properties": {
+        "class_number": {"type": "integer", "minimum": 1, "maximum": 85},
+        "class_name": {"type": "string", "minLength": 1},
+        "preliminary_state": {"enum": ["ASSIGNED_TO_INVESTIGATION", "NEGATIVE_EVIDENCE_REVIEW", "ALWAYS_CHECK", "UNRESOLVED", "DOWNSTREAM_CHAIN_REVIEW"]},
+        "task_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "candidate_files": {"type": "array", "items": {"type": "string"}},
+        "carrier_evidence": {"type": "array", "items": {"type": "object"}},
+        "negative_evidence": {"type": "array", "items": {"type": "object"}},
+        "logic_targets": {"type": "array", "items": {"type": "object"}},
+        "requires_manual_review": {"const": true}
+      }
+    }
+  }
+}

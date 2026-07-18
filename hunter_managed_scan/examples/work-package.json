@@ -1,0 +1,17 @@
+{
+  "assigned_classes": [10, 11, 12, 14, 49, 50, 55, 56, 57],
+  "candidate_files": ["src/api/accounts.ts"],
+  "logic_targets": [{"file": "src/api/accounts.ts", "symbol": "POST /accounts/:id", "target_id": "example-target"}],
+  "matcher_evidence": [],
+  "maximum_acu": 5,
+  "negative_evidence_to_review": [],
+  "questions": ["Trace subject-to-object authorization for each assigned route."],
+  "result_branch": "hunter-run/hunter-example/investigator-authz-business",
+  "run_id": "hunter-example",
+  "schema_version": 1,
+  "security_surfaces": ["route"],
+  "target_commit": "0123456789abcdef0123456789abcdef01234567",
+  "target_repository": "example/target",
+  "task_id": "investigator-authz-business",
+  "task_kind": "INVESTIGATION"
+}

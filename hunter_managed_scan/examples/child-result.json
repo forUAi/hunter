@@ -1,0 +1,12 @@
+{
+  "coverage_file": "coverage.json",
+  "evidence_file": "evidence.jsonl",
+  "findings_file": "findings.json",
+  "run_id": "hunter-example",
+  "schema_version": 1,
+  "status": "COMPLETE",
+  "target_commit": "0123456789abcdef0123456789abcdef01234567",
+  "target_repository": "example/target",
+  "target_unchanged": true,
+  "task_id": "investigator-authz-business"
+}

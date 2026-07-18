@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter per-finding runtime validation result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "finding_id", "validation_status", "summary", "actual_claim_tested", "environment", "setup", "reproduction_steps", "commands", "observed_outcome", "control_outcome", "artifacts", "limitations", "reachability_effect", "severity_effect", "confidence_effect", "recommended_follow_up", "blocking_condition", "missing_evidence", "confirmation_criteria", "target_commit", "produced_by"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "finding_id": {"type": "string", "minLength": 1},
+    "validation_status": {"enum": ["CONFIRMED", "FALSE_POSITIVE", "INCONCLUSIVE"]},
+    "summary": {"type": "string", "minLength": 1},
+    "actual_claim_tested": {"type": "string", "minLength": 1},
+    "environment": {"type": "object", "minProperties": 1},
+    "setup": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "reproduction_steps": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "commands": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/command"}},
+    "observed_outcome": {"type": "string", "minLength": 1},
+    "control_outcome": {"type": "string", "minLength": 1},
+    "artifacts": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "reachability_effect": {"type": "string", "minLength": 1},
+    "severity_effect": {"type": "string", "minLength": 1},
+    "confidence_effect": {"type": "string", "minLength": 1},
+    "recommended_follow_up": {"type": "string", "minLength": 1},
+    "blocking_condition": {"type": "string"},
+    "missing_evidence": {"type": "array", "items": {"type": "string"}},
+    "confirmation_criteria": {"type": "string"},
+    "target_commit": {"type": "string", "minLength": 1},
+    "produced_by": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "command": {
+      "type": "object",
+      "required": ["command", "exit_code"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1},
+        "exit_code": {"type": "integer"},
+        "output_artifact": {"type": "string"}
+      }
+    }
+  }
+}

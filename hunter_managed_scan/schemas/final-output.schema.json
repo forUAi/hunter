@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter managed completion-gated final output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "target_repository", "target_commit", "status", "findings", "coverage_summary", "validation_summary", "critic_summary", "acu_usage"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "status": {"enum": ["COMPLETE", "INCOMPLETE", "FAILED"]},
+    "findings": {"type": "array", "items": {"type": "object"}},
+    "coverage_summary": {"type": "object"},
+    "validation_summary": {"type": "object"},
+    "critic_summary": {"type": "object"},
+    "acu_usage": {"type": "object"}
+  }
+}

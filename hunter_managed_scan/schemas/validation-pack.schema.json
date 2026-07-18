@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter grouped validation pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "pack_id", "target_repository", "target_commit", "environment_family", "finding_ids", "setup_plan", "build_once", "maximum_acu", "result_branch"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "pack_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "environment_family": {"type": "string", "minLength": 1},
+    "finding_ids": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"type": "string"}},
+    "setup_plan": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "build_once": {"const": true},
+    "maximum_acu": {"type": "integer", "minimum": 1},
+    "result_branch": {"type": "string", "pattern": "^hunter-run/[^/]+/[^/]+$"}
+  }
+}
