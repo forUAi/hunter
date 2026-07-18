@@ -13,6 +13,7 @@ class ValidationPack:
     target_repository: str
     target_commit: str
     environment_family: str
+    compatibility_key: dict[str, str]
     finding_ids: tuple[str, ...]
     setup_plan: tuple[str, ...]
     build_once: bool
@@ -40,6 +41,7 @@ class ValidationResult:
     observed_outcome: str
     control_outcome: str
     artifacts: tuple[str, ...]
+    artifact_hashes: tuple[dict[str, str], ...]
     limitations: tuple[str, ...]
     reachability_effect: str
     severity_effect: str
@@ -54,6 +56,6 @@ class ValidationResult:
 
     def as_dict(self) -> dict[str, Any]:
         result = asdict(self)
-        for key in ("setup", "reproduction_steps", "commands", "artifacts", "limitations", "missing_evidence"):
+        for key in ("setup", "reproduction_steps", "commands", "artifacts", "artifact_hashes", "limitations", "missing_evidence"):
             result[key] = list(result[key])
         return result

@@ -1,5 +1,15 @@
 {
   "build_once": true,
+  "compatibility_key": {
+    "build_manifest": "apps/api/package.json",
+    "configuration_type": "application",
+    "framework": "express",
+    "module_root": "apps/api",
+    "package_manager": "npm",
+    "runtime_family": "node",
+    "runtime_version": "20",
+    "service_boundary": "apps/api"
+  },
   "environment_family": "node",
   "finding_ids": ["HMS-001", "HMS-002"],
   "maximum_acu": 7,

@@ -20,6 +20,7 @@ class ArtifactVerificationTests(unittest.TestCase):
         child = root / "fetched" / "scan_runs" / "run-1" / "tasks" / "task-1"
         child.mkdir(parents=True)
         (run / "inventory" / "accelerator").mkdir(parents=True)
+        (run / "coverage").mkdir()
         write_json(
             run / "run-manifest.json",
             {
@@ -44,12 +45,16 @@ class ArtifactVerificationTests(unittest.TestCase):
         write_json(child / "manifest.json", child_manifest)
         write_json(child / "result.json", result)
         write_json(child / "coverage.json", coverage if coverage is not None else [
-            {"class_number": 1, "review_status": "REVIEWED_NO_FINDING"},
-            {"class_number": 2, "review_status": "REVIEWED_NO_FINDING"},
+            {"class_number": 1, "review_status": "REVIEWED_NO_FINDING", "notes": "reviewed", "fallback_searches": [], "reviewed_artifacts": []},
+            {"class_number": 2, "review_status": "REVIEWED_NO_FINDING", "notes": "reviewed", "fallback_searches": [], "reviewed_artifacts": []},
         ])
         write_json(child / "findings.json", findings or [])
         write_jsonl(child / "evidence.jsonl", [])
         write_jsonl(run / "inventory" / "accelerator" / "file-inventory.jsonl", [])
+        write_json(run / "coverage" / "coverage-plan.json", {"entries": [
+            {"class_number": 1, "preliminary_state": "ASSIGNED_TO_INVESTIGATION"},
+            {"class_number": 2, "preliminary_state": "ASSIGNED_TO_INVESTIGATION"},
+        ]})
         package = {
             "task_id": "task-1", "assigned_classes": [1, 2], "result_branch": "hunter-run/run-1/task-1"
         }
@@ -105,9 +110,26 @@ class ArtifactVerificationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             run, child, package = self.child_tree(
-                root, coverage=[{"class_number": 1, "review_status": "REVIEWED_NO_FINDING"}]
+                root, coverage=[{
+                    "class_number": 1, "review_status": "REVIEWED_NO_FINDING", "notes": "reviewed",
+                    "fallback_searches": [], "reviewed_artifacts": [],
+                }]
             )
             with self.assertRaises(VerificationError):
+                verify_child_task(
+                    run_dir=run, work_package=package, child_artifact_dir=child,
+                    target_repo_path=root / "target", changed_paths=["scan_runs/run-1/tasks/task-1/result.json"]
+                )
+
+    def test_negative_evidence_outcome_requires_bounded_fallback_search(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run, child, package = self.child_tree(root)
+            write_json(run / "coverage" / "coverage-plan.json", {"entries": [
+                {"class_number": 1, "preliminary_state": "NEGATIVE_EVIDENCE_REVIEW"},
+                {"class_number": 2, "preliminary_state": "ASSIGNED_TO_INVESTIGATION"},
+            ]})
+            with self.assertRaisesRegex(VerificationError, "bounded fallback"):
                 verify_child_task(
                     run_dir=run, work_package=package, child_artifact_dir=child,
                     target_repo_path=root / "target", changed_paths=["scan_runs/run-1/tasks/task-1/result.json"]

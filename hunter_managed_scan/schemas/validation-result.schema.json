@@ -3,7 +3,7 @@
   "title": "Hunter per-finding runtime validation result",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "finding_id", "validation_status", "summary", "actual_claim_tested", "environment", "setup", "reproduction_steps", "commands", "observed_outcome", "control_outcome", "artifacts", "limitations", "reachability_effect", "severity_effect", "confidence_effect", "recommended_follow_up", "blocking_condition", "missing_evidence", "confirmation_criteria", "target_commit", "produced_by"],
+  "required": ["schema_version", "finding_id", "validation_status", "summary", "actual_claim_tested", "environment", "setup", "reproduction_steps", "commands", "observed_outcome", "control_outcome", "artifacts", "artifact_hashes", "limitations", "reachability_effect", "severity_effect", "confidence_effect", "recommended_follow_up", "blocking_condition", "missing_evidence", "confirmation_criteria", "target_commit", "produced_by"],
   "properties": {
     "schema_version": {"const": 1},
     "finding_id": {"type": "string", "minLength": 1},
@@ -17,6 +17,7 @@
     "observed_outcome": {"type": "string", "minLength": 1},
     "control_outcome": {"type": "string", "minLength": 1},
     "artifacts": {"type": "array", "items": {"type": "string"}},
+    "artifact_hashes": {"type": "array", "items": {"$ref": "#/$defs/artifact_hash"}},
     "limitations": {"type": "array", "items": {"type": "string"}},
     "reachability_effect": {"type": "string", "minLength": 1},
     "severity_effect": {"type": "string", "minLength": 1},
@@ -31,11 +32,29 @@
   "$defs": {
     "command": {
       "type": "object",
-      "required": ["command", "exit_code"],
+      "additionalProperties": false,
+      "required": ["command_id", "purpose", "command", "working_directory", "started_at", "finished_at", "exit_code", "stdout_sha256", "stderr_sha256", "is_control", "control_for_command_id"],
       "properties": {
+        "command_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "purpose": {"type": "string", "minLength": 1},
         "command": {"type": "string", "minLength": 1},
+        "working_directory": {"type": "string", "minLength": 1},
+        "started_at": {"type": "string", "minLength": 1},
+        "finished_at": {"type": "string", "minLength": 1},
         "exit_code": {"type": "integer"},
-        "output_artifact": {"type": "string"}
+        "stdout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "stderr_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "is_control": {"type": "boolean"},
+        "control_for_command_id": {"type": ["string", "null"]}
+      }
+    },
+    "artifact_hash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     }
   }

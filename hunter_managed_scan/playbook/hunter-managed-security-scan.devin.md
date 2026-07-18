@@ -44,10 +44,13 @@ validation, or Critic reasoning itself.
    with no `SKIPPED` state.
 6. Verify bounded packages cover every class, logic target, and detected
    security surface without one task per matcher.
-7. Create managed investigator sessions using `ROLE=INVESTIGATOR`, the assigned
-   package path, its isolated result branch, and its ACU limit.
-8. Create one independent coverage-auditor investigation session using its
-   complete 85-class package.
+7. Create domain-investigator sessions in one parallel wave where practical,
+   using `ROLE=INVESTIGATOR`, each assigned package, isolated result branch, and
+   ACU limit. Every class must have a domain owner in addition to the auditor.
+8. Accept all domain-investigator artifacts, run
+   `finalize-coverage-auditor-package`, then create the independent auditor with
+   all 85 preliminary states, deterministic evidence, unsupported constructs,
+   domain owners, and accepted investigator outcomes.
 9. Monitor every child with managed-session status and usage APIs. Do not ask a
    child in chat whether it is done.
 10. After a child reaches a terminal status, fetch its isolated
@@ -83,10 +86,209 @@ validation, or Critic reasoning itself.
     available, retries, total ACUs, final commit, and comparison-ready run path.
 
 Phase transitions and exits must be appended to `audit-log.jsonl`. Use the
-configured default limits unless the run manifest overrides them: parent 10,
-investigator 5, coverage auditor 5, validator pack 7, Critic 5, at most 7
+configured default limits unless the run manifest overrides them: total 55,
+parent 10, investigator 5, coverage auditor 5, validator pack 7, Critic 5, at most 7
 investigation children, 5 validation children, and 2 retries. Completeness is
 not waived when a budget is exhausted.
+
+### Concrete managed-session procedure
+
+The orchestration in this Playbook uses Devin's managed-session tools directly;
+it does not call or wait for a Python session service. The Python
+`SessionGateway` is only a test seam. The expected Devin capabilities are the
+managed-session create operation (normally exposed as `create_session`), status
+and gather operations (`get_session_status` and `gather_sessions`), and actual
+usage retrieval (`get_session_usage`). If the active Devin environment does not
+expose equivalent create, status/gather, and usage operations, stop with
+`ERROR: required Devin managed-session tools are unavailable`. Never claim that
+a child was created based on a chat message or guessed tool result.
+
+Before each proposed child or retry, retrieve the parent session's current
+cumulative ACU usage through the usage API and record it with a stable parent
+session ID using `record-session-usage`. Repeated records for one session replace
+its prior cumulative value during accounting rather than double-counting it.
+Then run:
+
+```bash
+python -m hunter_managed_scan.cli authorize-child \
+  --run-dir "$RUN_DIR" --task-id "$TASK_OR_PACK_ID" \
+  --role "$CHILD_ROLE" --phase "$PHASE" \
+  --maximum-acu "$MAXIMUM_ACU" --retry-number "$RETRY_NUMBER"
+```
+
+For a retry, append `--verification-error "$EXACT_MECHANICAL_ERROR"`; the
+command rejects a retry without it and preserves the string verbatim in the
+audit event.
+
+This command includes consumed ACUs and outstanding parallel-wave reservations.
+If it records `GLOBAL_ACU_BUDGET_EXHAUSTED`, do not create the child; leave its
+task incomplete and fail closed. Never omit a category, candidate validation,
+auditor, or Critic to remain under the cap.
+
+Write a JSON payload to
+`scan_runs/<run-id>/session-payloads/<task-or-pack-id>-<retry>.json` containing
+exactly `ROLE`, `RUN_ID`, `TASK_ID` or `PACK_ID`, package path, target repository,
+target commit, results repository (`forUAi/hunter`), results base branch,
+isolated result branch, maximum ACU, retry number, and—only for retries—the exact
+mechanical verification error. Large prompts must be file-backed: pass the
+payload path in the short prompt instead of pasting its contents.
+
+Call the managed-session create tool with this concrete shape:
+
+```text
+create_session({
+  repositories: [
+    {repository: TARGET_REPOSITORY, commit: TARGET_COMMIT, access: "read-only"},
+    {repository: "forUAi/hunter", branch: RESULTS_BRANCH, access: "write"}
+  ],
+  playbook: "hunter_managed_scan/playbook/hunter-managed-security-scan.devin.md",
+  prompt: "Read and execute session payload <PAYLOAD_PATH> exactly.",
+  maximum_acu: MAXIMUM_ACU
+})
+```
+
+Record the returned session ID, role, task/pack ID, branch, limit, and retry in
+`audit-log.jsonl`. Create the domain-investigator wave after all launch
+authorizations succeed. Use `gather_sessions` for the wave and
+`get_session_status` for individual polling. Accept only tool-reported terminal
+or settled states; treat failed, cancelled, expired, budget-exhausted, or missing
+states as incomplete. Never send conversational status questions.
+
+For every settled child, call `get_session_usage`, then record its returned ACUs:
+
+```bash
+python -m hunter_managed_scan.cli record-session-usage \
+  --run-dir "$RUN_DIR" --session-id "$SESSION_ID" \
+  --task-id "$TASK_OR_PACK_ID" --role "$CHILD_ROLE" --phase "$PHASE" \
+  --actual-acu "$ACTUAL_ACU" --retry-number "$RETRY_NUMBER"
+```
+
+Fetch the isolated result branch and enumerate changed paths. A chat response is
+not a result. Verification failure may be retried at most twice, and the retry
+payload must contain the verifier's exact error without paraphrase.
+
+### Child prompt templates
+
+Investigator payload prompt:
+
+```text
+ROLE=INVESTIGATOR
+RUN_ID=<run-id>
+TASK_ID=<domain-task-id>
+WORK_PACKAGE=<scan_runs/run-id/work-packages/task-id.json>
+TARGET_REPOSITORY=<owner/repo>
+TARGET_COMMIT=<exact-sha>
+RESULTS_REPOSITORY=forUAi/hunter
+RESULTS_BRANCH=<requested-base-branch>
+ISOLATED_RESULT_BRANCH=hunter-run/<run-id>/<task-id>
+MAXIMUM_ACU=<limit>
+Read the attached master Playbook and execute only the shared contract and
+ROLE=INVESTIGATOR section. Review every assigned class, including negative-
+evidence classes with bounded category-specific fallback searches.
+```
+
+Coverage-auditor payload prompt:
+
+```text
+ROLE=INVESTIGATOR
+RUN_ID=<run-id>
+TASK_ID=coverage-auditor
+WORK_PACKAGE=<scan_runs/run-id/work-packages/coverage-auditor.json>
+TARGET_REPOSITORY=<owner/repo>
+TARGET_COMMIT=<exact-sha>
+RESULTS_REPOSITORY=forUAi/hunter
+RESULTS_BRANCH=<requested-base-branch>
+ISOLATED_RESULT_BRANCH=hunter-run/<run-id>/coverage-auditor
+MAXIMUM_ACU=<limit>
+Independently audit all 85 classes. Challenge preliminary applicability,
+negative evidence, unsupported constructs, domain outcomes, and missing surfaces.
+```
+
+Validator payload prompt:
+
+```text
+ROLE=VALIDATOR
+RUN_ID=<run-id>
+PACK_ID=<validator-pack-id>
+VALIDATION_PACK=<scan_runs/run-id/validation-packs/pack-id.json>
+TARGET_REPOSITORY=<owner/repo>
+TARGET_COMMIT=<exact-sha>
+RESULTS_REPOSITORY=forUAi/hunter
+RESULTS_BRANCH=<requested-base-branch>
+ISOLATED_RESULT_BRANCH=hunter-run/<run-id>/<pack-id>
+MAXIMUM_ACU=<limit>
+Execute evidence-bound test and control commands for every finding and store all
+command outputs and SHA-256 records required by the validation schema.
+```
+
+Critic payload prompt:
+
+```text
+ROLE=CRITIC
+RUN_ID=<run-id>
+TASK_ID=critic
+INPUTS=<verified-findings,accepted-validations,taxonomy,mechanical-cvss>
+TARGET_REPOSITORY=<owner/repo>
+TARGET_COMMIT=<exact-sha>
+RESULTS_REPOSITORY=forUAi/hunter
+RESULTS_BRANCH=<requested-base-branch>
+ISOLATED_RESULT_BRANCH=hunter-run/<run-id>/critic
+MAXIMUM_ACU=<limit>
+Use fresh context. Read only the permitted Critic inputs and decide every finding
+exactly once.
+```
+
+### Child Git protocol
+
+The child may run Git write commands only in the attached results repository:
+
+```bash
+git -C "$RESULTS_REPO_PATH" fetch origin "$RESULTS_BRANCH"
+if git -C "$RESULTS_REPO_PATH" show-ref --verify --quiet "refs/heads/$ISOLATED_RESULT_BRANCH"; then
+  git -C "$RESULTS_REPO_PATH" switch "$ISOLATED_RESULT_BRANCH"
+  git -C "$RESULTS_REPO_PATH" pull --ff-only origin "$ISOLATED_RESULT_BRANCH"
+elif git -C "$RESULTS_REPO_PATH" ls-remote --exit-code --heads origin "$ISOLATED_RESULT_BRANCH"; then
+  git -C "$RESULTS_REPO_PATH" fetch origin "$ISOLATED_RESULT_BRANCH"
+  git -C "$RESULTS_REPO_PATH" switch --create "$ISOLATED_RESULT_BRANCH" \
+    "origin/$ISOLATED_RESULT_BRANCH"
+else
+  git -C "$RESULTS_REPO_PATH" switch --create "$ISOLATED_RESULT_BRANCH" \
+    "origin/$RESULTS_BRANCH"
+fi
+# Write only the assigned scan_runs/<run-id>/tasks/<task-id>/,
+# validations/<finding-id>/, or critic/ subtree.
+git -C "$RESULTS_REPO_PATH" add -- "$ALLOWED_ARTIFACT_SUBTREE"
+git -C "$RESULTS_REPO_PATH" commit -m "Hunter managed result: $TASK_OR_PACK_ID"
+git -C "$RESULTS_REPO_PATH" push origin "$ISOLATED_RESULT_BRANCH"
+```
+
+Before and after this protocol, compare the target's `HEAD`, porcelain status,
+and diff hash with the manifest. Never run `git switch`, `git checkout`, `git
+commit`, `git push`, or branch/PR creation in the target repository.
+
+### Parent acceptance Git protocol
+
+The parent must never merge a child branch wholesale. Use an isolated detached
+results worktree to verify the fetched ref before importing it:
+
+```bash
+git -C "$RESULTS_REPO_PATH" fetch origin "$ISOLATED_RESULT_BRANCH"
+git -C "$RESULTS_REPO_PATH" diff --name-only \
+  "origin/$RESULTS_BRANCH...origin/$ISOLATED_RESULT_BRANCH"
+git -C "$RESULTS_REPO_PATH" worktree add --detach "$VERIFY_WORKTREE" \
+  "origin/$ISOLATED_RESULT_BRANCH"
+# Run verify-task, verify-validation, or verify-critic against VERIFY_WORKTREE
+# and the enumerated paths before accepting anything.
+git -C "$RESULTS_REPO_PATH" worktree remove "$VERIFY_WORKTREE"
+git -C "$RESULTS_REPO_PATH" switch "$RESULTS_BRANCH"
+git -C "$RESULTS_REPO_PATH" restore \
+  --source="origin/$ISOLATED_RESULT_BRANCH" -- "$ALLOWED_ARTIFACT_SUBTREE"
+git -C "$RESULTS_REPO_PATH" add -- "$ALLOWED_ARTIFACT_SUBTREE"
+git -C "$RESULTS_REPO_PATH" commit -m "Accept verified Hunter result: $TASK_OR_PACK_ID"
+```
+
+Reject any changed path outside the assignment. Import only the verified subtree
+from the child ref into the requested results branch.
 
 ## ROLE=INVESTIGATOR
 
@@ -95,8 +297,15 @@ not waived when a budget is exhausted.
 2. Verify the run, repository, commit, task ID, result branch, and ACU limit.
 3. Review every assigned class and every assigned logic target. Search beyond
    matcher leads where required; generic source presence is not applicability.
+   For every `NEGATIVE_EVIDENCE_REVIEW`, inspect the negative evidence, perform a
+   bounded category-specific fallback search, and check inventory, dependencies,
+   manifests, and relevant configuration. Deterministic applicability can be
+   overturned by repository evidence.
 4. For each class, write exactly one explicit coverage outcome:
    `REVIEWED_NO_FINDING`, `CANDIDATE_PRODUCED`, `ABSTAINED`, or `COVERAGE_GAP`.
+   Each record must include notes, `fallback_searches`, and `reviewed_artifacts`.
+   Negative-evidence classes require nonempty fallback searches and reviewed
+   inventory/dependency/configuration artifacts or parent verification rejects it.
 5. For each candidate, establish source, dangerous sink or protected action,
    complete path, reachability, mitigations, verbatim evidence, preconditions,
    and impact. For authorization/business logic, keep different objects,
@@ -129,8 +338,11 @@ change the auditor's review outcome.
    dependency/package execution, workflow-expression reproduction, or safe
    state/race/authorization harness.
 4. Source rereading alone is not runtime validation. Always execute a meaningful
-   proof plus a control and record exact sanitized commands, exit codes, output,
-   setup, environment, and limitations.
+   proof plus an explicit control. Give every command a unique ID, purpose,
+   working directory, start/finish timestamps, exit code, stdout/stderr hashes,
+   and test/control relationship. Store sanitized bytes at
+   `command-output/<command-id>.stdout` and `.stderr`; reproduction and outcomes
+   must cite `command:<id>`. Record SHA-256 for every harness/config/fixture.
 5. Produce exactly one status per finding: `CONFIRMED`, `FALSE_POSITIVE`, or
    `INCONCLUSIVE`. An inconclusive result still needs an attempted reproduction,
    actual claim, exact blocker, missing evidence, confirmation/refutation
@@ -138,7 +350,7 @@ change the auditor's review outcome.
 6. Write each result only beneath
    `scan_runs/<run-id>/validations/<finding-id>/` with
    `validation-result.json`, `reproduction.md`, `commands.jsonl`, `output.txt`,
-   `environment.json`, and optional sanitized `artifacts/`.
+   `environment.json`, `command-output/`, and hashed sanitized `artifacts/`.
 7. Commit only to `hunter-run/<run-id>/<pack-id>`, validate every artifact, and
    confirm the target is unchanged.
 

@@ -8,6 +8,31 @@ from typing import Any
 from hunter_managed_scan.errors import MissingValidationError, VerificationError
 from hunter_managed_scan.utilities.cvss import calculate_base_score, severity_for_score
 from hunter_managed_scan.utilities.schema_validation import validate_artifact
+from hunter_managed_scan.utilities.secret_detection import verify_no_plaintext_secrets
+
+
+def verify_critic_result(
+    *, critic: dict[str, Any], findings: list[dict[str, Any]], run_id: str,
+    target_repository: str, target_commit: str,
+) -> dict[str, Any]:
+    validate_artifact(critic, "critic-result.schema.json")
+    for key, expected in {
+        "run_id": run_id,
+        "target_repository": target_repository,
+        "target_commit": target_commit,
+    }.items():
+        if critic.get(key) != expected:
+            raise VerificationError(f"critic result has wrong {key}")
+    expected_ids = {item["finding_id"] for item in findings}
+    decision_ids = [item["finding_id"] for item in critic["decisions"]]
+    if len(decision_ids) != len(set(decision_ids)) or set(decision_ids) != expected_ids:
+        raise VerificationError("critic must decide every finding exactly once")
+    verify_no_plaintext_secrets(critic)
+    return {
+        "verification_status": "ACCEPTED",
+        "decision_count": len(decision_ids),
+        "finding_ids": sorted(decision_ids),
+    }
 
 
 def apply_critic_results(
@@ -19,22 +44,15 @@ def apply_critic_results(
     target_repository: str,
     target_commit: str,
 ) -> list[dict[str, Any]]:
-    validate_artifact(critic, "critic-result.schema.json")
-    for key, expected in {
-        "run_id": run_id,
-        "target_repository": target_repository,
-        "target_commit": target_commit,
-    }.items():
-        if critic.get(key) != expected:
-            raise VerificationError(f"critic result has wrong {key}")
+    verify_critic_result(
+        critic=critic, findings=findings, run_id=run_id,
+        target_repository=target_repository, target_commit=target_commit,
+    )
     finding_by_id = {item["finding_id"]: item for item in findings}
     validation_by_id = {item["finding_id"]: item for item in validation_results}
     if len(validation_by_id) != len(validation_results) or set(validation_by_id) != set(finding_by_id):
         raise MissingValidationError("every verified finding must have exactly one validation result")
     decisions = critic["decisions"]
-    decision_ids = [item["finding_id"] for item in decisions]
-    if len(decision_ids) != len(set(decision_ids)) or set(decision_ids) != set(finding_by_id):
-        raise VerificationError("critic must decide every finding exactly once")
 
     final: list[dict[str, Any]] = []
     for decision in sorted(decisions, key=lambda item: item["finding_id"]):

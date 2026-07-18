@@ -16,6 +16,7 @@ from hunter_accelerator.taxonomy import load_and_validate_taxonomy
 from hunter_managed_scan.errors import OperationalError
 from hunter_managed_scan.models.manifest import BudgetConfiguration, RunManifest
 from hunter_managed_scan.utilities.audit_log import AuditLog
+from hunter_managed_scan.utilities.acu_budget import maximum_possible_acu
 from hunter_managed_scan.utilities.create_coverage_plan import create_coverage_plan
 from hunter_managed_scan.utilities.create_work_packages import create_work_packages
 from hunter_managed_scan.utilities.json_io import write_json
@@ -34,6 +35,7 @@ RUN_DIRECTORIES = (
     "validation-packs",
     "validations",
     "critic",
+    "session-payloads",
 )
 
 
@@ -82,7 +84,7 @@ def prepare_run(
     selected_budgets = budgets or BudgetConfiguration()
     budget_values = selected_budgets.as_dict()
     if any(int(budget_values[key]) < 1 for key in (
-        "parent_orchestrator_acu", "investigator_child_acu", "coverage_auditor_acu",
+        "maximum_total_acu", "parent_orchestrator_acu", "investigator_child_acu", "coverage_auditor_acu",
         "validator_pack_acu", "critic_acu", "maximum_investigation_children", "maximum_validation_children",
     )):
         raise OperationalError("ACU and child-count budgets must be positive")
@@ -179,6 +181,12 @@ def prepare_run(
         run_id=run_id,
         timestamp=timestamp,
         details={"task_ids": [package.task_id for package in packages]},
+    )
+    audit.append(
+        "acu_budget_configured",
+        run_id=run_id,
+        timestamp=timestamp,
+        details={**selected_budgets.as_dict(), **maximum_possible_acu(selected_budgets.as_dict())},
     )
     audit.append("target_immutability_verified", run_id=run_id, timestamp=timestamp)
     return run_dir, {

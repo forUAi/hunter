@@ -29,8 +29,9 @@
     "budgets": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["parent_orchestrator_acu", "investigator_child_acu", "coverage_auditor_acu", "validator_pack_acu", "critic_acu", "maximum_investigation_children", "maximum_validation_children", "maximum_retry_count"],
+      "required": ["maximum_total_acu", "parent_orchestrator_acu", "investigator_child_acu", "coverage_auditor_acu", "validator_pack_acu", "critic_acu", "maximum_investigation_children", "maximum_validation_children", "maximum_retry_count"],
       "properties": {
+        "maximum_total_acu": {"type": "integer", "minimum": 1},
         "parent_orchestrator_acu": {"type": "integer", "minimum": 1},
         "investigator_child_acu": {"type": "integer", "minimum": 1},
         "coverage_auditor_acu": {"type": "integer", "minimum": 1},

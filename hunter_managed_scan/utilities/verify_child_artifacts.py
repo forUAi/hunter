@@ -91,19 +91,34 @@ def verify_child_task(
     if not isinstance(coverage, list):
         raise VerificationError("child coverage artifact must be a list")
     coverage_numbers: list[int] = []
+    coverage_by_number: dict[int, dict[str, Any]] = {}
     for item in coverage:
         if not isinstance(item, dict) or item.get("review_status") not in REVIEW_STATUSES:
             raise VerificationError("child coverage contains an invalid review status")
-        coverage_numbers.append(int(item.get("class_number", 0)))
+        number = int(item.get("class_number", 0))
+        coverage_numbers.append(number)
+        coverage_by_number[number] = item
     expected_classes = sorted(int(value) for value in work_package["assigned_classes"])
     if sorted(coverage_numbers) != expected_classes or len(coverage_numbers) != len(set(coverage_numbers)):
         raise VerificationError("child coverage does not account for every assigned class exactly once")
+    coverage_plan = read_json(run_dir / "coverage" / "coverage-plan.json")
+    preliminary_by_number = {
+        int(item["class_number"]): item["preliminary_state"] for item in coverage_plan["entries"]
+    }
+    for number, item in coverage_by_number.items():
+        if preliminary_by_number[number] == "NEGATIVE_EVIDENCE_REVIEW" and not (
+            item.get("fallback_searches") and item.get("reviewed_artifacts")
+        ):
+            raise VerificationError(
+                f"negative-evidence class {number} lacks bounded fallback searches or reviewed inventory artifacts"
+            )
     if not isinstance(findings, list):
         raise VerificationError("child findings artifact must be a list")
     inventory_path = run_dir / "inventory" / "accelerator" / "file-inventory.jsonl"
     inventory = {item["relative_path"]: item for item in read_jsonl(inventory_path)}
     taxonomy = load_and_validate_taxonomy(Path(manifest["taxonomy_file"]))
     taxonomy_by_number = {int(item["class_number"]): item for item in taxonomy.classes}
+    finding_classes: set[int] = set()
     for finding in findings:
         validate_artifact(finding, "finding.schema.json")
         if int(finding["class_number"]) not in expected_classes:
@@ -118,6 +133,7 @@ def verify_child_task(
                 raise VerificationError(
                     f"finding {finding['finding_id']} has wrong authoritative {key} mapping"
                 )
+        finding_classes.add(int(finding["class_number"]))
         if finding["target_commit"] != manifest["target_commit"]:
             raise VerificationError("child finding cites the wrong target commit")
         verify_finding_excerpts(target_repo_path, finding)
@@ -126,6 +142,13 @@ def verify_child_task(
             if record and (record.get("generated") or record.get("test")) and not instance.get("production_relevance"):
                 raise VerificationError("generated or test evidence lacks an explicit production reachability argument")
         verify_no_plaintext_secrets(finding)
+    candidate_classes = {
+        number for number, item in coverage_by_number.items() if item["review_status"] == "CANDIDATE_PRODUCED"
+    }
+    if candidate_classes != finding_classes:
+        raise VerificationError(
+            "CANDIDATE_PRODUCED coverage outcomes must exactly match classes with candidate findings"
+        )
     verify_no_plaintext_secrets({"manifest": child_manifest, "coverage": coverage, "evidence": evidence, "result": result})
     require_target_unchanged(target_repo_path, Path(manifest["results_repo_path"]), _initial_snapshot(manifest))
     receipt = {

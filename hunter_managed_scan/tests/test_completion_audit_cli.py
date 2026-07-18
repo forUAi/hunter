@@ -31,7 +31,7 @@ def plan_entries(count: int = 85):
             "class_number": number,
             "class_name": f"Class {number}",
             "preliminary_state": "NEGATIVE_EVIDENCE_REVIEW",
-            "task_ids": ["task"],
+            "task_ids": ["task", "coverage-auditor"],
             "candidate_files": [],
             "carrier_evidence": [],
             "negative_evidence": [{}],
@@ -69,14 +69,17 @@ def build_empty_complete_run(root: Path):
         (run / path).mkdir(parents=True, exist_ok=True)
     write_json(run / "run-manifest.json", {
         "run_id": "run", "target_repository": "example/target", "target_commit": snapshot.commit_sha,
-        "results_repo_path": str(results), "initial_target_snapshot": snapshot.as_dict()
+        "results_repo_path": str(results), "initial_target_snapshot": snapshot.as_dict(),
+        "budgets": {"maximum_total_acu": 55}
     })
     write_json(run / "coverage" / "coverage-plan.json", {"entries": plan_entries()})
     write_json(run / "coverage" / "coverage-final.json", {
         "entries": coverage_entries(), "summary": {"complete": True, "class_count": 85, "coverage_gap_count": 0}
     })
     write_json(run / "work-packages" / "task.json", {"task_id": "task", "logic_targets": [], "security_surfaces": []})
+    write_json(run / "work-packages" / "coverage-auditor.json", {"task_id": "coverage-auditor", "logic_targets": [], "security_surfaces": []})
     write_json(run / "investigation" / "verified" / "task.json", {"verification_status": "ACCEPTED"})
+    write_json(run / "investigation" / "verified" / "coverage-auditor.json", {"verification_status": "ACCEPTED"})
     write_json(run / "investigation" / "normalized" / "findings.json", [])
     write_json(run / "root-causes" / "findings-clustered.json", [])
     write_json(run / "critic" / "critic-result.json", {
@@ -137,6 +140,9 @@ class CompletionAuditCliTests(unittest.TestCase):
         audit = audit_from_verified_receipt(plan, receipt)
         self.assertEqual(audit["entries"][0]["final_state"], "REVIEWED")
         self.assertEqual(audit["entries"][1]["final_state"], "NEGATIVE_EVIDENCE_ACCEPTED")
+        receipt["coverage"][1]["review_status"] = "CANDIDATE_PRODUCED"
+        audit = audit_from_verified_receipt(plan, receipt)
+        self.assertEqual(audit["entries"][1]["final_state"], "REVIEWED")
         receipt["coverage"][1]["review_status"] = "COVERAGE_GAP"
         audit = audit_from_verified_receipt(plan, receipt)
         self.assertTrue(audit["entries"][1]["coverage_gap"])
@@ -160,7 +166,9 @@ class CompletionAuditCliTests(unittest.TestCase):
             write_json(run / "coverage" / "coverage-plan.json", {"entries": plan_entries()})
             write_json(run / "coverage" / "coverage-final.json", {"entries": coverage_entries(), "summary": {"complete": True}})
             write_json(run / "work-packages" / "task.json", {"task_id": "task", "logic_targets": [], "security_surfaces": []})
+            write_json(run / "work-packages" / "coverage-auditor.json", {"task_id": "coverage-auditor", "logic_targets": [], "security_surfaces": []})
             write_json(run / "investigation" / "verified" / "task.json", {"verification_status": "ACCEPTED"})
+            write_json(run / "investigation" / "verified" / "coverage-auditor.json", {"verification_status": "ACCEPTED"})
             candidate = finding()
             write_json(run / "investigation" / "normalized" / "findings.json", [candidate])
             write_json(run / "root-causes" / "findings-clustered.json", [candidate])
@@ -189,7 +197,9 @@ class CompletionAuditCliTests(unittest.TestCase):
             write_json(run / "coverage" / "coverage-plan.json", {"entries": plan_entries()})
             write_json(run / "coverage" / "coverage-final.json", {"entries": coverage_entries(), "summary": {"complete": True, "class_count": 85, "coverage_gap_count": 0}})
             write_json(run / "work-packages" / "task.json", {"task_id": "task", "logic_targets": [], "security_surfaces": []})
+            write_json(run / "work-packages" / "coverage-auditor.json", {"task_id": "coverage-auditor", "logic_targets": [], "security_surfaces": []})
             write_json(run / "investigation" / "verified" / "task.json", {"verification_status": "ACCEPTED"})
+            write_json(run / "investigation" / "verified" / "coverage-auditor.json", {"verification_status": "ACCEPTED"})
             write_json(run / "investigation" / "normalized" / "findings.json", [])
             write_json(run / "root-causes" / "findings-clustered.json", [])
             write_json(run / "critic" / "critic-result.json", {
@@ -210,6 +220,16 @@ class CompletionAuditCliTests(unittest.TestCase):
             for name in ("findings-final.json", "final-output.json", "EXECUTIVE_BRIEF.md", "RUN_SUMMARY.md"):
                 self.assertTrue((run / name).is_file())
 
+    def test_completion_fails_after_global_budget_exhaustion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target, run = build_empty_complete_run(Path(directory))
+            AuditLog(run / "audit-log.jsonl").append(
+                "GLOBAL_ACU_BUDGET_EXHAUSTED", run_id="run",
+                details={"incomplete_task": "critic"}, timestamp="2026-07-18T00:00:00Z",
+            )
+            with self.assertRaises(IncompleteCoverageError):
+                completion_gate(run_dir=run, target_repo_path=target)
+
     def test_no_target_pr_or_branch_api_exists(self):
         self.assertFalse(hasattr(SessionGateway, "create_branch"))
         self.assertFalse(hasattr(SessionGateway, "open_pull_request"))
@@ -229,6 +249,17 @@ class CompletionAuditCliTests(unittest.TestCase):
         text = "\n".join(lines[:12])
         for role in ("ORCHESTRATOR", "INVESTIGATOR", "VALIDATOR", "CRITIC"):
             self.assertIn(role, text)
+
+    def test_master_playbook_contains_direct_managed_session_and_git_mechanics(self):
+        playbook = Path(__file__).resolve().parents[1] / "playbook" / "hunter-managed-security-scan.devin.md"
+        text = playbook.read_text(encoding="utf-8")
+        for required in (
+            "create_session", "gather_sessions", "get_session_status", "get_session_usage",
+            "forUAi/hunter", "authorize-child", "GLOBAL_ACU_BUDGET_EXHAUSTED",
+            "git -C \"$RESULTS_REPO_PATH\" worktree add", "git -C \"$RESULTS_REPO_PATH\" restore",
+            "required Devin managed-session tools are unavailable",
+        ):
+            self.assertIn(required, text)
 
     def test_audit_log_is_deterministic_valid_json_lines(self):
         with tempfile.TemporaryDirectory() as directory:

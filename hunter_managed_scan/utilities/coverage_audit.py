@@ -30,6 +30,8 @@ def audit_from_verified_receipt(plan: dict[str, Any], receipt: dict[str, Any]) -
         gap = status in {"ABSTAINED", "COVERAGE_GAP"}
         if gap:
             final_state = "UNRESOLVED"
+        elif status == "CANDIDATE_PRODUCED":
+            final_state = "REVIEWED"
         elif preliminary == "NEGATIVE_EVIDENCE_REVIEW":
             final_state = "NEGATIVE_EVIDENCE_ACCEPTED"
         elif preliminary == "DOWNSTREAM_CHAIN_REVIEW":

@@ -49,14 +49,7 @@ def create_work_packages(
         entries = [entry for entry in plan.entries if task_id in entry.task_ids]
         class_numbers = {entry.class_number for entry in entries}
         audit = task_id == "coverage-auditor"
-        if audit:
-            bounded_entries = [
-                entry
-                for entry in entries
-                if entry.preliminary_state in {"NEGATIVE_EVIDENCE_REVIEW", "UNRESOLVED", "DOWNSTREAM_CHAIN_REVIEW"}
-            ]
-        else:
-            bounded_entries = entries
+        bounded_entries = entries
         files = sorted({path for entry in bounded_entries for path in entry.candidate_files})[:200]
         surfaces = sorted(
             {
@@ -73,6 +66,24 @@ def create_work_packages(
         }
         matchers = matcher_leads_for_classes(preparation["matchers"], class_numbers)
         negative = [entry.negative_evidence[0] for entry in bounded_entries if entry.negative_evidence]
+        coverage_context = (
+            tuple(
+                {
+                    "class_number": entry.class_number,
+                    "class_name": entry.class_name,
+                    "preliminary_state": entry.preliminary_state,
+                    "domain_owner": next(value for value in entry.task_ids if value != "coverage-auditor"),
+                    "top_carrier_evidence": list(entry.carrier_evidence[:3]),
+                    "negative_evidence": list(entry.negative_evidence[:1]),
+                    "candidate_files": list(entry.candidate_files[:5]),
+                    "logic_targets": list(entry.logic_targets[:3]),
+                    "investigator_outcome": None,
+                }
+                for entry in entries
+            )
+            if audit
+            else ()
+        )
         packages.append(
             WorkPackage(
                 run_id=plan.run_id,
@@ -86,6 +97,8 @@ def create_work_packages(
                 logic_targets=tuple(logic_targets[key] for key in sorted(logic_targets)),
                 matcher_evidence=tuple(matchers),
                 negative_evidence_to_review=tuple(negative),
+                coverage_context=coverage_context,
+                unsupported_constructs=tuple(preparation.get("unsupported", [])[:100]) if audit else (),
                 questions=TASK_QUESTIONS[task_id],
                 result_branch=f"hunter-run/{plan.run_id}/{task_id}",
                 maximum_acu=(budgets.coverage_auditor_acu if audit else budgets.investigator_child_acu),

@@ -19,6 +19,8 @@ class WorkPackage:
     logic_targets: tuple[dict[str, Any], ...]
     matcher_evidence: tuple[dict[str, Any], ...]
     negative_evidence_to_review: tuple[dict[str, Any], ...]
+    coverage_context: tuple[dict[str, Any], ...]
+    unsupported_constructs: tuple[dict[str, Any], ...]
     questions: tuple[str, ...]
     result_branch: str
     maximum_acu: int
@@ -33,6 +35,8 @@ class WorkPackage:
             "logic_targets",
             "matcher_evidence",
             "negative_evidence_to_review",
+            "coverage_context",
+            "unsupported_constructs",
             "questions",
         ):
             result[key] = list(result[key])

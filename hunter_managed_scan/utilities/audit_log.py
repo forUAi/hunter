@@ -34,7 +34,17 @@ class AuditLog:
 
 
 def aggregate_acu_usage(records: list[dict[str, Any]]) -> dict[str, Any]:
-    usages = [record for record in records if record.get("event") == "session_usage"]
+    latest_by_session: dict[str, dict[str, Any]] = {}
+    unkeyed: list[dict[str, Any]] = []
+    for record in records:
+        if record.get("event") != "session_usage":
+            continue
+        session_id = str(record.get("details", {}).get("session_id", ""))
+        if session_id:
+            latest_by_session[session_id] = record
+        else:
+            unkeyed.append(record)
+    usages = [*unkeyed, *latest_by_session.values()]
     parent = 0.0
     children: dict[str, float] = {}
     for record in usages:

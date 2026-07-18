@@ -17,6 +17,8 @@ from hunter_managed_scan.utilities.create_coverage_plan import create_coverage_p
 from hunter_managed_scan.utilities.create_work_packages import create_work_packages
 from hunter_managed_scan.utilities.prepare_run import prepare_run
 from hunter_managed_scan.utilities.target_guard import capture_target_snapshot
+from hunter_managed_scan.utilities.finalize_coverage_auditor import finalize_coverage_auditor_package
+from hunter_managed_scan.utilities.json_io import write_json
 from hunter_managed_scan.tests.helpers import preparation
 
 
@@ -76,6 +78,60 @@ class CoverageAndPackageTests(unittest.TestCase):
         plan = self.plan()
         self.assertTrue(all(entry.task_ids and entry.preliminary_state for entry in plan.entries))
         self.assertTrue(all("coverage-auditor" in entry.task_ids for entry in plan.entries))
+        self.assertTrue(all(len(entry.task_ids) == 2 for entry in plan.entries))
+        self.assertTrue(all(any(task != "coverage-auditor" for task in entry.task_ids) for entry in plan.entries))
+
+    def test_negative_evidence_class_still_reaches_domain_investigator(self):
+        plan = self.plan()
+        negative = next(entry for entry in plan.entries if entry.preliminary_state == "NEGATIVE_EVIDENCE_REVIEW")
+        domain_owner = next(task for task in negative.task_ids if task != "coverage-auditor")
+        packages = create_work_packages(plan=plan, preparation=preparation(), budgets=BudgetConfiguration())
+        package = next(item for item in packages if item.task_id == domain_owner)
+        self.assertIn(negative.class_number, package.assigned_classes)
+        self.assertTrue(package.negative_evidence_to_review)
+
+    def test_no_class_is_owned_only_by_coverage_auditor(self):
+        plan = self.plan()
+        sole = [entry.class_number for entry in plan.entries if entry.task_ids == ("coverage-auditor",)]
+        self.assertEqual(sole, [])
+
+    def test_investigator_can_overturn_incorrect_negative_applicability(self):
+        plan = self.plan()
+        packages = create_work_packages(plan=plan, preparation=preparation(), budgets=BudgetConfiguration())
+        auditor = next(item for item in packages if item.task_id == "coverage-auditor")
+        negative = next(item for item in auditor.coverage_context if item["preliminary_state"] == "NEGATIVE_EVIDENCE_REVIEW")
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            (run / "work-packages").mkdir()
+            (run / "investigation" / "verified").mkdir(parents=True)
+            write_json(run / "run-manifest.json", {"run_id": "run-1"})
+            write_json(run / "work-packages" / "coverage-auditor.json", auditor.as_dict())
+            for package in packages:
+                if package.task_id == "coverage-auditor":
+                    continue
+                coverage = [
+                    {
+                        "class_number": number,
+                        "review_status": "REVIEWED_NO_FINDING",
+                        "notes": "bounded fallback complete",
+                        "fallback_searches": ["category-specific fallback"],
+                        "reviewed_artifacts": ["inventory and manifests"],
+                    }
+                    for number in package.assigned_classes
+                ]
+                findings = []
+                if negative["domain_owner"] == package.task_id:
+                    outcome = next(item for item in coverage if item["class_number"] == negative["class_number"])
+                    outcome["review_status"] = "CANDIDATE_PRODUCED"
+                    findings = [{"finding_id": "overturn-1", "class_number": negative["class_number"]}]
+                write_json(
+                    run / "investigation" / "verified" / f"{package.task_id}.json",
+                    {"verification_status": "ACCEPTED", "coverage": coverage, "findings": findings},
+                )
+            finalized = finalize_coverage_auditor_package(run)
+            context = next(item for item in finalized["coverage_context"] if item["class_number"] == negative["class_number"])
+            self.assertEqual(context["investigator_outcome"]["review_status"], "CANDIDATE_PRODUCED")
+            self.assertEqual(context["investigator_outcome"]["finding_ids"], ["overturn-1"])
 
     def test_work_packages_are_deterministic(self):
         plan = self.plan()
@@ -98,6 +154,8 @@ class CoverageAndPackageTests(unittest.TestCase):
         packages = create_work_packages(plan=self.plan(), preparation=preparation(), budgets=BudgetConfiguration())
         auditor = next(item for item in packages if item.task_id == "coverage-auditor")
         self.assertEqual(auditor.assigned_classes, tuple(range(1, 86)))
+        self.assertEqual(len(auditor.coverage_context), 85)
+        self.assertTrue(all(item["domain_owner"] != "coverage-auditor" for item in auditor.coverage_context))
 
     def test_fixture_families_exist(self):
         fixtures = Path(__file__).parent / "fixtures"
@@ -138,6 +196,7 @@ class CoverageAndPackageTests(unittest.TestCase):
             self.assertEqual(before, after)
             self.assertEqual(output["manifest"]["target_repository"], "example/llm-agentic")
             self.assertEqual(output["manifest"]["target_commit"], commit)
+            self.assertEqual(output["manifest"]["budgets"]["maximum_total_acu"], 55)
             self.assertEqual(len(output["coverage_plan"]["entries"]), 85)
             self.assertLessEqual(len(output["work_packages"]), 7)
             self.assertFalse((run_dir / "findings-final.json").exists())

@@ -9,6 +9,7 @@ from hunter_managed_scan.errors import IncompleteCoverageError, MissingValidatio
 from hunter_managed_scan.models.final_output import FinalOutput
 from hunter_managed_scan.models.manifest import TargetSnapshot
 from hunter_managed_scan.utilities.audit_log import AuditLog, aggregate_acu_usage
+from hunter_managed_scan.utilities.acu_budget import acu_budget_snapshot
 from hunter_managed_scan.utilities.cvss import calculate_base_score
 from hunter_managed_scan.utilities.json_io import read_json, read_jsonl, write_json
 from hunter_managed_scan.utilities.schema_validation import validate_artifact
@@ -48,6 +49,14 @@ def _verify_coverage(plan: dict[str, Any], final_coverage: dict[str, Any]) -> No
     numbers = [int(item["class_number"]) for item in plan.get("entries", [])]
     if len(numbers) != 85 or set(numbers) != set(range(1, 86)):
         raise IncompleteCoverageError("coverage plan does not contain every taxonomy class exactly once")
+    for entry in plan["entries"]:
+        task_ids = list(entry.get("task_ids", []))
+        if len(task_ids) != 2 or "coverage-auditor" not in task_ids or not any(
+            task_id != "coverage-auditor" for task_id in task_ids
+        ):
+            raise IncompleteCoverageError(
+                f"class {entry['class_number']} lacks both a domain investigator and coverage auditor owner"
+            )
     final_numbers = [int(item["class_number"]) for item in final_coverage.get("entries", [])]
     if len(final_numbers) != 85 or set(final_numbers) != set(range(1, 86)):
         raise IncompleteCoverageError("final coverage ledger does not contain every class exactly once")
@@ -124,12 +133,20 @@ def completion_gate(*, run_dir: Path, target_repo_path: Path) -> dict[str, Any]:
 
     require_target_unchanged(target_repo_path, Path(manifest["results_repo_path"]), _initial_snapshot(manifest))
     audit_records = read_jsonl(run_dir / "audit-log.jsonl")
+    maximum_total_acu = float(manifest["budgets"]["maximum_total_acu"])
+    budget_snapshot = acu_budget_snapshot(audit_records, maximum_total_acu)
+    if any(item.get("event") == "GLOBAL_ACU_BUDGET_EXHAUSTED" for item in audit_records):
+        raise IncompleteCoverageError("global ACU budget exhaustion left required work incomplete")
+    if budget_snapshot["actual_acu"] > maximum_total_acu:
+        raise IncompleteCoverageError("actual ACU usage exceeds the configured global run budget")
     status_counts: dict[str, int] = {"CONFIRMED": 0, "FALSE_POSITIVE": 0, "INCONCLUSIVE": 0}
     for result in validations:
         status_counts[result["validation_status"]] += 1
     verdict_counts: dict[str, int] = {"CONFIRMED": 0, "DOWNGRADED": 0, "REJECTED": 0}
     for decision in critic["decisions"]:
         verdict_counts[decision["verdict"]] += 1
+    acu_usage = aggregate_acu_usage(audit_records)
+    acu_usage.update(budget_snapshot)
     output = FinalOutput(
         run_id=manifest["run_id"],
         target_repository=manifest["target_repository"],
@@ -139,7 +156,7 @@ def completion_gate(*, run_dir: Path, target_repo_path: Path) -> dict[str, Any]:
         coverage_summary=final_coverage["summary"],
         validation_summary={"finding_count": len(clustered), "status_counts": status_counts},
         critic_summary={"decision_count": len(critic["decisions"]), "verdict_counts": verdict_counts},
-        acu_usage=aggregate_acu_usage(audit_records),
+        acu_usage=acu_usage,
     ).as_dict()
     validate_artifact(output, "final-output.schema.json")
     write_json(run_dir / "findings-final.json", final_findings)

@@ -12,6 +12,7 @@ from hunter_managed_scan import (
     DEFAULT_MAX_INVESTIGATION_CHILDREN,
     DEFAULT_MAX_RETRIES,
     DEFAULT_MAX_VALIDATION_CHILDREN,
+    DEFAULT_MAXIMUM_TOTAL_ACU,
     DEFAULT_PARENT_ACU,
     DEFAULT_VALIDATOR_ACU,
 )
@@ -29,6 +30,7 @@ class TargetSnapshot:
 
 @dataclass(frozen=True)
 class BudgetConfiguration:
+    maximum_total_acu: int = DEFAULT_MAXIMUM_TOTAL_ACU
     parent_orchestrator_acu: int = DEFAULT_PARENT_ACU
     investigator_child_acu: int = DEFAULT_INVESTIGATOR_ACU
     coverage_auditor_acu: int = DEFAULT_COVERAGE_AUDITOR_ACU

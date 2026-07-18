@@ -48,10 +48,7 @@ def create_coverage_plan(
             state = "ASSIGNED_TO_INVESTIGATION"
         else:
             state = "NEGATIVE_EVIDENCE_REVIEW"
-        if state == "NEGATIVE_EVIDENCE_REVIEW" or state == "DOWNSTREAM_CHAIN_REVIEW":
-            task_ids = ("coverage-auditor",)
-        else:
-            task_ids = (specialist_task_for_class(number), "coverage-auditor")
+        task_ids = (specialist_task_for_class(number), "coverage-auditor")
         entries.append(
             CoverageEntry(
                 class_number=number,

@@ -65,6 +65,9 @@ def finding(
 
 
 def validation(finding_id: str = "HMS-001", status: str = "CONFIRMED") -> dict[str, Any]:
+    test_stdout = hashlib.sha256(b"test-output\n").hexdigest()
+    control_stdout = hashlib.sha256(b"control-output\n").hexdigest()
+    empty = hashlib.sha256(b"").hexdigest()
     return {
         "schema_version": 1,
         "finding_id": finding_id,
@@ -73,11 +76,42 @@ def validation(finding_id: str = "HMS-001", status: str = "CONFIRMED") -> dict[s
         "actual_claim_tested": "Input changes query structure in the relevant library.",
         "environment": {"runtime": "fixture-python"},
         "setup": ["Created an isolated local harness."],
-        "reproduction_steps": ["Executed payload and a benign control."],
-        "commands": [{"command": "python fixture_probe.py", "exit_code": 0}],
-        "observed_outcome": "The proof path reached the instrumented sink.",
-        "control_outcome": "The control preserved query structure.",
+        "reproduction_steps": [
+            "Run command:test-1 with the candidate payload.",
+            "Run command:control-1 with the inert control payload.",
+        ],
+        "commands": [
+            {
+                "command_id": "test-1",
+                "purpose": "Exercise the candidate security claim",
+                "command": "python fixture_probe.py --payload candidate",
+                "working_directory": "validation-harness",
+                "started_at": "2026-07-18T00:00:00+00:00",
+                "finished_at": "2026-07-18T00:00:01+00:00",
+                "exit_code": 0,
+                "stdout_sha256": test_stdout,
+                "stderr_sha256": empty,
+                "is_control": False,
+                "control_for_command_id": None,
+            },
+            {
+                "command_id": "control-1",
+                "purpose": "Exercise the benign control claim",
+                "command": "python fixture_probe.py --payload inert-control",
+                "working_directory": "validation-harness",
+                "started_at": "2026-07-18T00:00:02+00:00",
+                "finished_at": "2026-07-18T00:00:03+00:00",
+                "exit_code": 0,
+                "stdout_sha256": control_stdout,
+                "stderr_sha256": empty,
+                "is_control": True,
+                "control_for_command_id": "test-1",
+            },
+        ],
+        "observed_outcome": "command:test-1 reached the instrumented sink.",
+        "control_outcome": "command:control-1 preserved query structure.",
         "artifacts": ["output.txt"],
+        "artifact_hashes": [{"path": "output.txt", "sha256": "0" * 64}],
         "limitations": ["Local fixture only."],
         "reachability_effect": "Supports local reachability.",
         "severity_effect": "No mechanical change.",
