@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Independent Hunter coverage-audit result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "target_repository", "target_commit", "produced_by", "entries"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "produced_by": {"type": "string", "minLength": 1},
+    "entries": {"type": "array", "minItems": 85, "maxItems": 85, "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class_number", "final_state", "reviewed_by", "notes", "coverage_gap"],
+      "properties": {
+        "class_number": {"type": "integer", "minimum": 1, "maximum": 85},
+        "final_state": {"enum": ["REVIEWED", "NEGATIVE_EVIDENCE_ACCEPTED", "UNRESOLVED", "DOWNSTREAM_CHAIN_REVIEW"]},
+        "reviewed_by": {"type": "string", "minLength": 1},
+        "notes": {"type": "string", "minLength": 1},
+        "coverage_gap": {"type": "boolean"}
+      }
+    }
+  }
+}

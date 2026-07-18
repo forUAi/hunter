@@ -1,0 +1,23 @@
+{
+  "build_once": true,
+  "compatibility_key": {
+    "build_manifest": "apps/api/package.json",
+    "configuration_type": "application",
+    "framework": "express",
+    "module_root": "apps/api",
+    "package_manager": "npm",
+    "runtime_family": "node",
+    "runtime_version": "20",
+    "service_boundary": "apps/api"
+  },
+  "environment_family": "node",
+  "finding_ids": ["HMS-001", "HMS-002"],
+  "maximum_acu": 7,
+  "pack_id": "validator-node-1",
+  "result_branch": "hunter-run/hunter-example/validator-node-1",
+  "run_id": "hunter-example",
+  "schema_version": 1,
+  "setup_plan": ["Initialize one isolated Node test environment.", "Run one proof and control per finding."],
+  "target_commit": "0123456789abcdef0123456789abcdef01234567",
+  "target_repository": "example/target"
+}

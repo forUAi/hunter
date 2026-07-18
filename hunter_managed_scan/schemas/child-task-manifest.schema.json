@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter managed child task manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "task_id", "target_repository", "target_commit", "result_branch"],
+  "properties": {
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "result_branch": {"type": "string", "pattern": "^hunter-run/[^/]+/[^/]+$"}
+  }
+}

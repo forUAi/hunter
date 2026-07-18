@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter managed work package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "task_id", "task_kind", "target_repository", "target_commit", "assigned_classes", "candidate_files", "security_surfaces", "logic_targets", "matcher_evidence", "negative_evidence_to_review", "coverage_context", "unsupported_constructs", "questions", "result_branch", "maximum_acu"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]+$"},
+    "task_kind": {"enum": ["INVESTIGATION", "COVERAGE_AUDIT"]},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "assigned_classes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 85}},
+    "candidate_files": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "security_surfaces": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "logic_targets": {"type": "array", "items": {"type": "object"}},
+    "matcher_evidence": {"type": "array", "items": {"type": "object"}},
+    "negative_evidence_to_review": {"type": "array", "items": {"type": "object"}},
+    "coverage_context": {"type": "array", "items": {"type": "object"}},
+    "unsupported_constructs": {"type": "array", "items": {"type": "object"}},
+    "questions": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "result_branch": {"type": "string", "pattern": "^hunter-run/[^/]+/[^/]+$"},
+    "maximum_acu": {"type": "integer", "minimum": 1}
+  }
+}

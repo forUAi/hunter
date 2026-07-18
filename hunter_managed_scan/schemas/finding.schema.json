@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter managed candidate finding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["finding_id", "class_number", "class_name", "category", "cwe", "owasp", "title", "description", "severity", "cvss_vector", "cvss_score", "confidence", "status", "security_property", "root_cause_candidate", "source", "sink", "attack_path", "preconditions", "reachability", "mitigations_checked", "affected_instances", "evidence", "remediation_recommendation", "produced_by", "target_commit"],
+  "properties": {
+    "finding_id": {"type": "string", "minLength": 1},
+    "class_number": {"type": "integer", "minimum": 1, "maximum": 85},
+    "class_name": {"type": "string", "minLength": 1},
+    "category": {"type": "string", "minLength": 1},
+    "cwe": {"type": "string", "minLength": 1},
+    "owasp": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string", "minLength": 1},
+    "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"]},
+    "cvss_vector": {"type": "string", "pattern": "^CVSS:3\\.1/"},
+    "cvss_score": {"type": "number", "minimum": 0, "maximum": 10},
+    "confidence": {"enum": ["HIGH", "MEDIUM", "LOW"]},
+    "status": {"enum": ["CANDIDATE", "VERIFIED_CANDIDATE"]},
+    "security_property": {"type": "string", "minLength": 1},
+    "root_cause_candidate": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "sink": {"type": "string", "minLength": 1},
+    "attack_path": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "preconditions": {"type": "array", "items": {"type": "string"}},
+    "reachability": {"type": "string", "minLength": 1},
+    "mitigations_checked": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "affected_instances": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/instance"}},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "remediation_recommendation": {"type": "string", "minLength": 1},
+    "produced_by": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "start_line", "end_line", "excerpt", "excerpt_sha256", "component", "endpoint_or_workflow", "production_relevance"],
+      "properties": {
+        "file": {"type": "string", "minLength": 1},
+        "start_line": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1},
+        "excerpt": {"type": "string", "minLength": 1},
+        "excerpt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "component": {"type": "string", "minLength": 1},
+        "endpoint_or_workflow": {"type": "string", "minLength": 1},
+        "production_relevance": {"type": "string"}
+      }
+    }
+  }
+}

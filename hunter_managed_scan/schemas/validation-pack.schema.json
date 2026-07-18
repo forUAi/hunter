@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter grouped validation pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "pack_id", "target_repository", "target_commit", "environment_family", "compatibility_key", "finding_ids", "setup_plan", "build_once", "maximum_acu", "result_branch"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "pack_id": {"type": "string", "minLength": 1},
+    "target_repository": {"type": "string", "minLength": 1},
+    "target_commit": {"type": "string", "minLength": 1},
+    "environment_family": {"type": "string", "minLength": 1},
+    "compatibility_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_family", "runtime_version", "module_root", "service_boundary", "package_manager", "build_manifest", "framework", "configuration_type"],
+      "properties": {
+        "runtime_family": {"type": "string", "minLength": 1},
+        "runtime_version": {"type": "string", "minLength": 1},
+        "module_root": {"type": "string", "minLength": 1},
+        "service_boundary": {"type": "string", "minLength": 1},
+        "package_manager": {"type": "string", "minLength": 1},
+        "build_manifest": {"type": "string", "minLength": 1},
+        "framework": {"type": "string", "minLength": 1},
+        "configuration_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "finding_ids": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"type": "string"}},
+    "setup_plan": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "build_once": {"const": true},
+    "maximum_acu": {"type": "integer", "minimum": 1},
+    "result_branch": {"type": "string", "pattern": "^hunter-run/[^/]+/[^/]+$"}
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hunter child class-coverage records",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["class_number", "review_status", "notes", "fallback_searches", "reviewed_artifacts"],
+    "properties": {
+      "class_number": {"type": "integer", "minimum": 1, "maximum": 85},
+      "review_status": {"enum": ["REVIEWED_NO_FINDING", "CANDIDATE_PRODUCED", "ABSTAINED", "COVERAGE_GAP"]},
+      "notes": {"type": "string", "minLength": 1},
+      "fallback_searches": {"type": "array", "items": {"type": "string"}},
+      "reviewed_artifacts": {"type": "array", "items": {"type": "string"}}
+    }
+  }
+}
